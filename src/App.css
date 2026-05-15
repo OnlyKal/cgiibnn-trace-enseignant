@@ -1,0 +1,179 @@
+.App {
+  min-height: 100vh;
+  background-color: var(--gray-50);
+  display: flex;
+  flex-direction: column;
+}
+
+.App-header {
+  background-color: var(--white);
+  padding: var(--spacing-xl);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+/* ========================================
+   CONTENEUR PRINCIPAL
+   ======================================== */
+.main-container {
+  flex: 1;
+  padding: var(--spacing-xl);
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ========================================
+   PAGE SÉLECTION TYPE DE COMPTE
+   ======================================== */
+.account-type-selection {
+  background-color: var(--white);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-2xl);
+  box-shadow: var(--shadow-sm);
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.account-type-header {
+  text-align: center;
+  margin-bottom: var(--spacing-2xl);
+  padding-bottom: var(--spacing-xl);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.account-type-header h1 {
+  margin-bottom: var(--spacing-md);
+  color: var(--gray-900);
+  font-size: 2rem;
+}
+
+.account-type-header p {
+  font-size: 1rem;
+  color: var(--gray-600);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* ========================================
+   GRILLE DE TYPES DE COMPTE
+   ======================================== */
+.account-types-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--spacing-xl);
+  margin-bottom: var(--spacing-2xl);
+}
+
+.account-type-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--spacing-xl);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  background-color: var(--white);
+}
+
+.account-type-card:hover {
+  border-color: var(--primary-color);
+  background-color: var(--primary-light);
+}
+
+.account-type-icon {
+  font-size: 3rem;
+  margin-bottom: var(--spacing-md);
+  color: var(--primary-color);
+}
+
+.account-type-card h3 {
+  margin-bottom: var(--spacing-sm);
+  color: var(--gray-900);
+  font-size: 1.25rem;
+}
+
+.account-type-card p {
+  font-size: 0.9rem;
+  color: var(--gray-600);
+  margin-bottom: var(--spacing-lg);
+  flex-grow: 1;
+}
+
+.account-type-card .btn {
+  width: 100%;
+}
+
+/* ========================================
+   BOUTONS D'ACTION
+   ======================================== */
+.form-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: var(--spacing-xl);
+}
+
+.account-type-btn {
+  min-width: 180px;
+  padding: 0.9rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+}
+
+.account-type-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.account-type-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* ========================================
+   PIED DE PAGE
+   ======================================== */
+.account-selection-footer {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-md);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--gray-200);
+}
+
+.account-selection-footer .btn {
+  min-width: 150px;
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+@media (max-width: 768px) {
+  .main-container {
+    padding: var(--spacing-lg);
+  }
+
+  .account-type-selection {
+    padding: var(--spacing-lg);
+  }
+
+  .account-types-grid {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-lg);
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .account-type-btn {
+    width: 100%;
+  }
+
+  .account-type-header h1 {
+    font-size: 1.5rem;
+  }
+}

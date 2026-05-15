@@ -1,0 +1,294 @@
+/* ========================================
+   PAGE SÉLECTION DU TYPE DE COMPTE
+   Conception moderne, professionnelle et attrayante
+   ======================================== */
+
+.account-type-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--gray-50) 0%, var(--white) 100%);
+  padding: var(--spacing-2xl) var(--spacing-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ========================================
+   SECTION PRINCIPALE
+   ======================================== */
+.account-selection-wrapper {
+  background-color: var(--white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  max-width: 1000px;
+  width: 100%;
+  padding: var(--spacing-2xl);
+}
+
+.account-selection-header {
+  text-align: center;
+  margin-bottom: var(--spacing-2xl);
+}
+
+.account-selection-header h1 {
+  font-size: 2.5rem;
+  color: var(--gray-900);
+  margin-bottom: var(--spacing-md);
+  font-weight: 700;
+}
+
+.account-selection-header p {
+  font-size: 1.1rem;
+  color: var(--gray-600);
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+.header-decoration {
+  width: 60px;
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary-color) 0%, var(--primary-light) 100%);
+  margin: var(--spacing-xl) auto var(--spacing-lg);
+  border-radius: 2px;
+}
+
+/* ========================================
+   GRILLE DE CARTES
+   ======================================== */
+.account-types-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--spacing-2xl);
+  margin-bottom: var(--spacing-2xl);
+}
+
+/* ========================================
+   CARTES INDIVIDUELLES
+   ======================================== */
+.account-type-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--spacing-2xl);
+  background-color: var(--gray-50);
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  text-align: center;
+}
+
+.account-type-item:hover {
+  border-color: var(--primary-color);
+  background-color: var(--primary-light);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Icône */
+.account-type-icon {
+  font-size: 3.5rem;
+  margin-bottom: var(--spacing-lg);
+  color: var(--primary-color);
+  transition: all var(--transition-base);
+}
+
+.account-type-item:hover .account-type-icon {
+  transform: scale(1.1);
+}
+
+/* Titre */
+.account-type-item h3 {
+  font-size: 1.4rem;
+  color: var(--gray-900);
+  margin-bottom: var(--spacing-md);
+  font-weight: 700;
+}
+
+/* Description */
+.account-type-description {
+  font-size: 0.95rem;
+  color: var(--gray-600);
+  margin-bottom: var(--spacing-lg);
+  flex-grow: 1;
+  line-height: 1.6;
+}
+
+/* Avantages/Caractéristiques */
+.account-type-features {
+  list-style: none;
+  padding: 0;
+  margin: var(--spacing-lg) 0;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  width: 100%;
+}
+
+.account-type-features li {
+  font-size: 0.9rem;
+  color: var(--gray-600);
+  padding-left: var(--spacing-xl);
+  position: relative;
+}
+
+.account-type-features li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: var(--success-color);
+  font-weight: 700;
+}
+
+/* Bouton d'action */
+.account-type-btn {
+  width: 100%;
+  padding: 0.9rem 1.5rem;
+  background-color: var(--primary-color);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  margin-top: auto;
+}
+
+.account-type-btn:hover {
+  background-color: var(--primary-dark);
+  transform: translateY(-2px);
+}
+
+.account-type-btn:active {
+  transform: translateY(0);
+}
+
+.account-type-btn:disabled {
+  background-color: var(--gray-300);
+  color: var(--gray-500);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ========================================
+   SECTION ACTIONS
+   ======================================== */
+.account-selection-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-lg);
+  padding-top: var(--spacing-xl);
+  border-top: 1px solid var(--gray-200);
+  flex-wrap: wrap;
+}
+
+.btn-logout {
+  padding: 0.75rem 1.5rem;
+  background-color: var(--success-color);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.btn-logout:hover {
+  background-color: #059669;
+}
+
+.btn-logout:active {
+  transform: scale(0.98);
+}
+
+/* ========================================
+   BANDEAU D'INFORMATION
+   ======================================== */
+.account-selection-info {
+  background-color: var(--primary-light);
+  border-left: 4px solid var(--primary-color);
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-2xl);
+  color: var(--primary-dark);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.account-selection-info strong {
+  font-weight: 700;
+  display: block;
+  margin-bottom: var(--spacing-sm);
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+@media (max-width: 768px) {
+  .account-selection-wrapper {
+    padding: var(--spacing-xl);
+  }
+
+  .account-selection-header h1 {
+    font-size: 1.8rem;
+  }
+
+  .account-selection-header p {
+    font-size: 1rem;
+  }
+
+  .account-types-container {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-xl);
+  }
+
+  .account-type-item {
+    padding: var(--spacing-xl);
+  }
+
+  .account-type-icon {
+    font-size: 2.5rem;
+  }
+
+  .account-type-item h3 {
+    font-size: 1.2rem;
+  }
+
+  .account-selection-actions {
+    flex-direction: column;
+  }
+
+  .btn-logout {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .account-container {
+    padding: var(--spacing-lg) var(--spacing-md);
+  }
+
+  .account-selection-wrapper {
+    padding: var(--spacing-lg);
+  }
+
+  .account-selection-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .account-type-icon {
+    font-size: 2rem;
+  }
+
+  .account-type-item {
+    padding: var(--spacing-lg);
+  }
+}

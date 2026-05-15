@@ -1,0 +1,16 @@
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Cercle de base -->
+  <circle cx="40" cy="40" r="38" fill="#0066cc" opacity="0.1" stroke="#0066cc" strokeWidth="2"/>
+  
+  <!-- Livre/Document -->
+  <rect x="25" y="30" width="30" height="35" rx="2" fill="#0066cc"/>
+  
+  <!-- Pages du livre -->
+  <line x1="40" y1="30" x2="40" y2="65" stroke="white" strokeWidth="1.5"/>
+  <line x1="32" y1="40" x2="48" y2="40" stroke="white" strokeWidth="1"/>
+  <line x1="32" y1="48" x2="48" y2="48" stroke="white" strokeWidth="1"/>
+  <line x1="32" y1="56" x2="48" y2="56" stroke="white" strokeWidth="1"/>
+  
+  <!-- Décoration - trait en bas -->
+  <rect x="20" y="72" width="40" height="3" rx="1.5" fill="#0066cc"/>
+</svg>
