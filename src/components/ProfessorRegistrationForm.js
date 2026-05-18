@@ -13,6 +13,12 @@ import { COUNTRIES } from '../data/countries';
 const DRAFT_KEY = 'localstorageDraft';
 const DRAFT_SAVE_DELAY = 1000; // 1 seconde de debounce
 
+// Catégories d'assistant
+const CATEGORIE_ASSISTANT_CHOICES = [
+  { value: 'Academique', label: 'Assistant Académique' },
+  { value: 'Recherche', label: 'Assistant de Recherche' },
+];
+
 const UNIVERSITIES = [
   {
     "code": "(ISSS-CR GOMA)",
@@ -4077,6 +4083,8 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
     statut: '',
     statut_apprenant: '',
     typecompte: '',
+    categorie_assistant: '',
+    centre_laboratoire_recherche: '',
   };
 
   // Initialiser formData en restaurant le brouillon si disponible
@@ -4181,6 +4189,8 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
         decision_inscription_ass_ct: null,
         photo_passeport: null,
         type_assistant: d.type_assistant || '',
+        categorie_assistant: d.categorie_assistant || '',
+        centre_laboratoire_recherche: d.centre_laboratoire_recherche || '',
         // CT
         arrete_nomination_ct: null,
       });
@@ -4335,6 +4345,9 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
     if (currentType === 'Assistant' && newType !== 'Assistant') {
       if (formData.decision_nomination_assistant) fieldsThatWouldBeCleared.push('Décision de nomination (assistant)');
       if (formData.statut) fieldsThatWouldBeCleared.push('Statut');
+      if (formData.categorie_assistant) fieldsThatWouldBeCleared.push("Catégorie d'Assistant");
+      if (formData.centre_laboratoire_recherche) fieldsThatWouldBeCleared.push('Centre/Laboratoire de Recherche');
+      if (formData.charge_horaire) fieldsThatWouldBeCleared.push('Charge Horaire');
     }
     // Si on quitte CT, prévenir si arrêté de nomination est présent
     if (currentType === 'CT' && newType !== 'CT') {
@@ -4364,6 +4377,9 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
     if (cur === 'Assistant' && newType !== 'Assistant') {
       updated.decision_nomination_assistant = null;
       updated.statut = '';
+      updated.categorie_assistant = '';
+      updated.centre_laboratoire_recherche = '';
+      updated.charge_horaire = null;
     }
     if (cur === 'CT' && newType !== 'CT') {
       updated.arrete_nomination_ct = null;
@@ -4770,6 +4786,10 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
             <DataRow label="Domaine de recherche" value={viewedData.domaine_recherche} />
             <DataRow label="Établissement d'attache" value={viewedData.etablissement_attache} />
             <DataRow label="Mandat Assistant" value={viewedData.mandat_assistant || 'Non renseigné'} />
+            <DataRow label="Catégorie d'Assistant" value={viewedData.categorie_assistant || 'Non renseigné'} />
+            {viewedData.categorie_assistant === 'Recherche' && (
+              <DataRow label="Centre/Laboratoire de Recherche" value={viewedData.centre_laboratoire_recherche || 'Non renseigné'} />
+            )}
             <DataRow label="Prime institutionnelle" value={viewedData.prime_institutionnelle || 'Non renseigné'} />
           </DataSection>
 
@@ -4792,10 +4812,12 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
               <span className="data-label">Décision d'inscription:</span>
               <span className="data-value"><FileLink path={viewedData.decision_inscription} /></span>
             </div>
-            <div className="data-row">
-              <span className="data-label">Charge horaire:</span>
-              <span className="data-value"><FileLink path={viewedData.charge_horaire} /></span>
-            </div>
+            {viewedData.categorie_assistant === 'Academique' && (
+              <div className="data-row">
+                <span className="data-label">Charge horaire:</span>
+                <span className="data-value"><FileLink path={viewedData.charge_horaire} /></span>
+              </div>
+            )}
           </DataSection>
 
           <DataSection title="Confirmation">
@@ -5133,6 +5155,11 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
       req('universite_attache', "Établissement d'attache");
       req('domaine_recherche', 'Domaine de Recherche');
       req('statut', 'Mandat Assistant (Premier ou Deuxième Mandat)');
+      req('categorie_assistant', "Catégorie d'Assistant");
+      // Validation du centre de recherche si c'est un Assistant de Recherche
+      if (formData.categorie_assistant === 'Recherche') {
+        req('centre_laboratoire_recherche', 'Centre/Laboratoire de Recherche');
+      }
       // req('statut_apprenant', 'Statut Apprenant');
       // req('date_inscription', "Date d'Inscription");
       // reqFile('copie_diplome', 'Dernier diplôme');
@@ -5256,11 +5283,13 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
           prime_institutionnelle:           formData.prime_institutionnelle,
           type_diplome:                     formData.type_diplome,
           type_diplome_dea_des:             formData.type_diplome_dea_des,
+          categorie_assistant:              formData.categorie_assistant,
           // Optionnels
           salaire_base:                     formData.salaire_base,
           email:                            formData.email,
           commentaires:                     formData.commentaire_confirmation,
           informations_vraies:              formData.informations_vraies,
+          centre_laboratoire_recherche:     formData.centre_laboratoire_recherche,
         };
 
         // Ajouter matricule pour Assistant (optionnel - saisi par l'utilisateur)
@@ -5278,7 +5307,8 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
         if (formData.photo_passeport)               submitData.append('photo_passeport',      formData.photo_passeport);
         if (formData.decision_nomination_assistant) submitData.append('decision_nomination',  formData.decision_nomination_assistant);
         if (formData.decision_inscription_ass_ct)   submitData.append('decision_inscription', formData.decision_inscription_ass_ct);
-        if (formData.charge_horaire)                submitData.append('charge_horaire',        formData.charge_horaire);
+        // Envoyer charge_horaire seulement pour Assistant Académique
+        if (formData.charge_horaire && formData.categorie_assistant === 'Academique') submitData.append('charge_horaire', formData.charge_horaire);
         if (formData.diplome_etat)                  submitData.append('diplome_etat',          formData.diplome_etat);
         if (formData.diplome_graduat)               submitData.append('diplome_graduat',       formData.diplome_graduat);
         if (formData.diplome_licence)               submitData.append('diplome_licence',       formData.diplome_licence);
@@ -5885,6 +5915,38 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
               />
             </div>
 
+            <div className="form-group">
+              <label htmlFor="categorie_assistant">Catégorie d'Assistant <span className="required">*</span></label>
+              <select
+                id="categorie_assistant"
+                name="categorie_assistant"
+                value={formData.categorie_assistant}
+                onChange={handleInputChange}
+                required
+              >
+                <option value="">-- Sélectionner --</option>
+                {CATEGORIE_ASSISTANT_CHOICES.map((choice) => (
+                  <option key={choice.value} value={choice.value}>
+                    {choice.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {formData.categorie_assistant === 'Recherche' && (
+              <div className="form-group">
+                <label htmlFor="centre_laboratoire_recherche">Centre/Laboratoire de Recherche <span className="required">*</span></label>
+                <input
+                  type="text"
+                  id="centre_laboratoire_recherche"
+                  name="centre_laboratoire_recherche"
+                  value={formData.centre_laboratoire_recherche}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+            )}
+
 {/* <div className="form-group">
               <label htmlFor="copie_diplome">Téléverser votre dernier diplôme ou documents équivalents <span className="required">*</span></label>
               <input
@@ -6123,6 +6185,27 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
             </>
           )}
         </fieldset>
+        )}
+
+        {/* Charge Horaire for Assistant Académique */}
+        {formData.typecompte === 'Assistant' && formData.categorie_assistant === 'Academique' && (
+          <fieldset>
+            <legend>Charge Horaire</legend>
+            <div className="form-group">
+              <label htmlFor="charge_horaire_ass">Charge horaire validée par une autorité décanale / Académique <span className="optional">(optionnel)</span></label>
+              <small className="file-hint">{ALLOWED_FILE_LABEL}</small>
+              <input
+                type="file"
+                id="charge_horaire_ass"
+                name="charge_horaire"
+                accept={ALLOWED_FILE_ACCEPT}
+                onChange={handleFileChange}
+              />
+              {formData.charge_horaire && (
+                <small className="file-info">✅ Fichier sélectionné: {formData.charge_horaire.name}</small>
+              )}
+            </div>
+          </fieldset>
         )}
 
         {/* Section Informations de Contact for Assistant */}

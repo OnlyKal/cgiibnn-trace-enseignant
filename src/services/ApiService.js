@@ -415,6 +415,62 @@ class ApiService {
   }
 
   /**
+   * Envoyer un email de vérification d'adresse email
+   * POST /api/enseignants/comptes/send-verification-email/
+   * Note: Cette méthode ne requiert pas d'authentification
+   */
+  async sendVerificationEmail(email) {
+    const response = await fetch(`${SERVER_URL}/api/enseignants/comptes/send-verification-email/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: email,
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || error.message || 'Erreur lors de l\'envoi de l\'email de vérification');
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Vérifier le statut du compte en le récupérant depuis le serveur
+   * GET /api/enseignants/comptes/me/
+   * Returns: { statut_compte: 'actif' | 'inactif' }
+   */
+  async checkAccountStatus() {
+    try {
+      this.validateToken();
+      
+      const token = this.getToken();
+      const response = await fetch(`${SERVER_URL}/api/enseignants/comptes/me/`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (!response.ok) {
+        await this.handleAuthError(response);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Erreur lors de la vérification du statut:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Nettoyer la session complètement
    */
   clearSession() {

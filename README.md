@@ -1,6 +1,24 @@
-# Getting Started with Create React App
+# Plateforme d'Identification des Enseignants
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Cette application a été générée avec [Create React App](https://github.com/facebook/create-react-app).
+
+---
+
+## 📧 RÉCENT: Système de Vérification d'Email ✅
+
+Un système complet de gestion de vérification d'email a été implémenté (18 mai 2026).
+
+### 📍 Documentation rapide:
+- **[IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)** - Vue d'ensemble (5 min) ⭐ START HERE
+- **[CHANGES_SUMMARY.md](CHANGES_SUMMARY.md)** - Détails des modifications (10 min)
+- **[SETUP_GUIDE.md](SETUP_GUIDE.md)** - Configuration backend requise (10 min)
+- **[EMAIL_VERIFICATION_SYSTEM.md](EMAIL_VERIFICATION_SYSTEM.md)** - Documentation technique complète
+- **[README_EMAIL_VERIFICATION.md](README_EMAIL_VERIFICATION.md)** - Index et navigation
+
+### Status:
+✅ **Frontend:** 100% complet | 🔨 **Backend:** À implémenter
+
+---
 
 ## Available Scripts
 

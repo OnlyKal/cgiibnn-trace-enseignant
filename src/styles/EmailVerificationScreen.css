@@ -1,0 +1,268 @@
+/* ============================================================
+   EMAIL VERIFICATION PAGE — Mise en page globale
+   ============================================================ */
+.email-verification-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #e7f1ff 0%, #f0f6ff 50%, #ffffff 100%);
+  padding: 1.5rem;
+}
+
+/* ============================================================
+   LOGO AU-DESSUS DE LA CARTE
+   ============================================================ */
+.email-verification-page__logo {
+  text-align: center;
+  margin-bottom: 1.25rem;
+}
+
+.email-verification-page__logo img {
+  height: 80px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(0, 123, 255, 0.18));
+}
+
+/* ============================================================
+   CARTE DE VÉRIFICATION D'EMAIL
+   ============================================================ */
+.email-verification-card {
+  width: 100%;
+  max-width: 460px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 123, 255, 0.10), 0 2px 8px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── En-tête ── */
+.email-verification-card__header {
+  background: linear-gradient(135deg, #007BFF 0%, #0056b3 100%);
+  padding: 2.5rem 2rem 2rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.email-verification-card__icon-badge {
+  width: 64px;
+  height: 64px;
+  background: #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  color: #007BFF;
+  box-shadow: 0 4px 16px rgba(0, 123, 255, 0.2);
+  flex-shrink: 0;
+}
+
+.email-verification-card__title {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.3px;
+}
+
+.email-verification-card__subtitle {
+  margin: 0;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+/* ── Corps du formulaire ── */
+.email-verification-card__form {
+  padding: 2rem 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ── Message informatif ── */
+.email-verification-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.email-verification-card__message {
+  font-size: 0.9375rem;
+  color: #4b5563;
+  line-height: 1.5;
+  margin: 0;
+  text-align: center;
+}
+
+.email-verification-card__email {
+  font-size: 0.9375rem;
+  color: #007BFF;
+  font-weight: 600;
+  margin: 0;
+  text-align: center;
+}
+
+.email-verification-card__hint {
+  font-size: 0.8125rem;
+  color: #9ca3af;
+  margin: 0;
+  text-align: center;
+}
+
+/* ── Alerte ── */
+.email-verification-alert {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-left: 4px solid transparent;
+}
+
+.email-verification-alert--success {
+  background: #d1fae5;
+  color: #065f46;
+  border-left-color: #10b981;
+}
+
+.email-verification-alert--error {
+  background: #fee2e2;
+  color: #7f1d1d;
+  border-left-color: #ef4444;
+}
+
+/* ── Boutons ── */
+.email-verification-button {
+  padding: 0.75rem 1.25rem;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms ease-out;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.email-verification-button--primary {
+  background: linear-gradient(135deg, #007BFF 0%, #0056b3 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.25);
+}
+
+.email-verification-button--primary:hover:not(:disabled) {
+  box-shadow: 0 6px 16px rgba(0, 123, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+.email-verification-button--primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.email-verification-button--primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.email-verification-button--secondary {
+  background: #f3f4f6;
+  color: #6b7280;
+  border: 1.5px solid #e5e7eb;
+}
+
+.email-verification-button--secondary:hover:not(:disabled) {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+}
+
+.email-verification-button--secondary:active:not(:disabled) {
+  transform: none;
+}
+
+/* ── Compte à rebours ── */
+.email-verification-card__countdown {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin: -0.5rem 0 0.25rem 0;
+}
+
+.email-verification-card__countdown svg {
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================================
+   RESPONSIVE DESIGN
+   ============================================================ */
+@media (max-width: 600px) {
+  .email-verification-page {
+    padding: 1rem;
+  }
+
+  .email-verification-card {
+    max-width: 100%;
+  }
+
+  .email-verification-card__header {
+    padding: 2rem 1.5rem 1.5rem;
+  }
+
+  .email-verification-card__form {
+    padding: 1.5rem 1.5rem 1.25rem;
+    gap: 1rem;
+  }
+
+  .email-verification-card__title {
+    font-size: 1.5rem;
+  }
+
+  .email-verification-card__message {
+    font-size: 0.875rem;
+  }
+
+  .email-verification-button {
+    padding: 0.65rem 1rem;
+    font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .email-verification-card__title {
+    font-size: 1.25rem;
+  }
+
+  .email-verification-card__icon-badge {
+    width: 56px;
+    height: 56px;
+    font-size: 1.5rem;
+  }
+
+  .email-verification-page__logo {
+    margin-bottom: 1rem;
+  }
+
+  .email-verification-page__logo img {
+    height: 70px;
+  }
+}

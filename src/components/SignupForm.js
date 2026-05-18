@@ -157,9 +157,18 @@ const SignupForm = ({ onSignupSuccess, onBackToLogin }) => {
       showPopup('Compte créé avec succès !', 'success');
       setMessage('');
 
-      setTimeout(() => {
-        onSignupSuccess(userData);
-      }, 1000);
+      // Vérifier si le compte nécessite une vérification d'email
+      if (userData.statut_compte === 'inactif') {
+        // Compte créé mais inactive - redirection vers vérification email
+        setTimeout(() => {
+          onSignupSuccess(userData, { requiresEmailVerification: true });
+        }, 1000);
+      } else {
+        // Compte actif - continue normalement
+        setTimeout(() => {
+          onSignupSuccess(userData, { requiresEmailVerification: false });
+        }, 1000);
+      }
     } catch (error) {
       let errorMsg = 'Erreur lors de la création du compte';
       if (error.name === 'AbortError') {
