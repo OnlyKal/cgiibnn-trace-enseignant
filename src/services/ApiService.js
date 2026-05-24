@@ -213,8 +213,10 @@ class ApiService {
     ];
 
     const formData = new FormData();
+    const isPrivateProfessor = data.type_etablissement === 'Privé';
 
     TEXT_FIELDS.forEach((key) => {
+      if (isPrivateProfessor && ['matricule_esu', 'salaire_base'].includes(key)) return;
       if (data[key] !== null && data[key] !== undefined) {
         formData.append(key, data[key]);
       }
@@ -231,9 +233,9 @@ class ApiService {
 
   /**
    * Modifier partiellement un Professeur (PATCH)
-   * PATCH /api/enseignants/professeur/edit/{matricule}/
+   * PATCH /api/enseignants/professeur/edit/{id}/
    */
-  async updateProfesseur(matricule, data) {
+  async updateProfesseur(id, data) {
     const TEXT_FIELDS = [
       'nom', 'postnom', 'prenom', 'sexe', 'type_etablissement', 'matricule_esu',
       'lieu_naissance', 'date_naissance', 'grade_actuel', 'pays_soutenance',
@@ -255,8 +257,10 @@ class ApiService {
     ];
 
     const formData = new FormData();
+    const isPrivateProfessor = data.type_etablissement === 'Privé';
 
     TEXT_FIELDS.forEach((key) => {
+      if (isPrivateProfessor && ['matricule_esu', 'salaire_base'].includes(key)) return;
       if (data[key] !== null && data[key] !== undefined) {
         formData.append(key, data[key]);
       }
@@ -268,8 +272,11 @@ class ApiService {
       }
     });
 
-    const response = await fetch(`${SERVER_URL}/api/enseignants/professeur/edit/${matricule}/`, {
+    const response = await fetch(`${SERVER_URL}/api/enseignants/professeur/edit/${id}/`, {
       method: 'PATCH',
+      headers: {
+        Accept: 'application/json',
+      },
       body: formData,
       signal: AbortSignal.timeout(240000),
     });

@@ -190,8 +190,14 @@
   display: flex;
   gap: 0.75rem;
   justify-content: center;
+  align-items: center;
   flex-wrap: wrap;
   margin-top: 0.25rem;
+}
+
+.mr-state-actions .mr-btn {
+  height: 42px;
+  margin-top: 0;
 }
 
 /* Loading spinner */
@@ -212,13 +218,18 @@
 .mr-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.45rem;
-  padding: 0.6rem 1.1rem;
+  min-height: 42px;
+  min-width: 168px;
+  padding: 0.6rem 1rem;
   border-radius: 8px;
   font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
   border: none;
+  box-sizing: border-box;
+  white-space: nowrap;
   transition: background 0.15s, opacity 0.15s;
 }
 
@@ -241,10 +252,24 @@
   background: #e5e7eb;
 }
 
+.mr-btn-migrate {
+  background: #0f766e;
+  color: #ffffff;
+}
+
+.mr-btn-migrate:hover {
+  background: #115e59;
+}
+
+.mr-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .mr-btn-create {
-  padding: 0.75rem 1.5rem;
-  font-size: 0.95rem;
-  margin-top: 0.5rem;
+  padding: 0.6rem 1rem;
+  font-size: 0.88rem;
+  margin-top: 0;
 }
 
 /* ── Record wrapper ── */
@@ -294,12 +319,43 @@
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.mr-record-topbar-actions .mr-btn {
+  min-width: 178px;
+}
+
+.mr-record-topbar-actions .mr-btn-secondary {
+  min-width: 42px;
+  width: 42px;
+  padding-inline: 0;
 }
 
 .mr-record-content {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.mr-alert {
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.mr-alert-success {
+  color: #166534;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+.mr-alert-error {
+  color: #991b1b;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
 }
 
 .mr-record-meta {
@@ -382,6 +438,219 @@
   text-decoration: underline;
 }
 
+/* ── Migration modal ── */
+.mr-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(17, 24, 39, 0.58);
+}
+
+.mr-modal {
+  width: min(560px, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+}
+
+.mr-modal-header {
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+  padding: 1.15rem 1.25rem;
+  border-bottom: 1px solid #fee2e2;
+  background: #fffbeb;
+}
+
+.mr-modal-warning-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  color: #b45309;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  font-size: 1.2rem;
+}
+
+.mr-modal-header h2 {
+  margin: 0;
+  color: #92400e;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.mr-modal-header p {
+  margin: 0.2rem 0 0;
+  color: #78350f;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.mr-modal-body {
+  padding: 1rem 1.25rem;
+  color: #374151;
+  font-size: 0.94rem;
+  line-height: 1.6;
+}
+
+.mr-modal-body p {
+  margin: 0 0 0.85rem;
+}
+
+.mr-modal-body p:last-child {
+  margin-bottom: 0;
+}
+
+.mr-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid #f3f4f6;
+  background: #f9fafb;
+}
+
+.mr-modal-footer .mr-btn {
+  min-width: 170px;
+  height: 42px;
+}
+
+/* ── Migration celebration ── */
+.mr-celebration {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  pointer-events: none;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 8vh 1rem 1rem;
+  animation: mr-celebration-fade 4.2s ease forwards;
+}
+
+.mr-confetti-field {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.mr-confetti-piece {
+  position: absolute;
+  top: -18px;
+  left: var(--x);
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  background: #0f766e;
+  opacity: 0;
+  transform: rotate(var(--rotate));
+  animation: mr-confetti-fall var(--duration) cubic-bezier(0.18, 0.7, 0.34, 1) var(--delay) forwards;
+}
+
+.mr-confetti-piece:nth-child(5n + 1) {
+  background: #0055a5;
+}
+
+.mr-confetti-piece:nth-child(5n + 2) {
+  background: #f59e0b;
+  width: 6px;
+  height: 12px;
+}
+
+.mr-confetti-piece:nth-child(5n + 3) {
+  background: #16a34a;
+}
+
+.mr-confetti-piece:nth-child(5n + 4) {
+  background: #dc2626;
+  width: 7px;
+  height: 10px;
+}
+
+.mr-celebration-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  width: min(560px, 100%);
+  padding: 1rem 1.15rem;
+  border-radius: 10px;
+  border: 1px solid #bbf7d0;
+  background: rgba(240, 253, 244, 0.96);
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.18);
+  animation: mr-celebration-card 4.2s ease forwards;
+}
+
+.mr-celebration-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  color: #ffffff;
+  background: #16a34a;
+  font-size: 1.45rem;
+  font-weight: 800;
+}
+
+.mr-celebration-card p {
+  margin: 0;
+  color: #14532d;
+  font-size: 0.96rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+@keyframes mr-confetti-fall {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -18px, 0) rotate(var(--rotate));
+  }
+  12% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(18px, 74vh, 0) rotate(calc(var(--rotate) + 280deg));
+  }
+}
+
+@keyframes mr-celebration-card {
+  0% {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.98);
+  }
+  12%, 78% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.99);
+  }
+}
+
+@keyframes mr-celebration-fade {
+  0%, 82% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 /* ── Responsive ── */
 @media (max-width: 640px) {
   .mr-header {
@@ -411,6 +680,22 @@
 
   .mr-record-topbar {
     flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .mr-modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .mr-modal-footer .mr-btn {
+    width: 100%;
+  }
+
+  .mr-celebration {
+    padding-top: 6vh;
+  }
+
+  .mr-celebration-card {
     align-items: flex-start;
   }
 }

@@ -272,6 +272,13 @@ function App() {
               setEditRecordType(type);
               setAppView('form');
             }}
+            onUserUpdated={(updatedUser) => {
+              setCurrentUser(updatedUser);
+              setSelectedAccountType('');
+              setFormMode('create');
+              setRecordToEdit(null);
+              setEditRecordType('');
+            }}
             onLogout={handleLogout}
           />
         ) : (

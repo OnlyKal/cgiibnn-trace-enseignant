@@ -291,7 +291,7 @@ describe('ApiService', () => {
         email: 'jean.dupont@unikin.ac.cd',
         commentaires: 'RAS',
         informations_vraies: true,
-        dernier_diplome: new File(['diploma'], 'diploma.pdf', { type: 'application/pdf' }),
+        diplome_master_dea_ds: new File(['diploma'], 'diploma.pdf', { type: 'application/pdf' }),
         photo_passeport: new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
         decision_nomination: new File(['decision'], 'decision.pdf', { type: 'application/pdf' }),
         decision_inscription: new File(['inscription'], 'inscription.pdf', { type: 'application/pdf' }),
@@ -365,7 +365,7 @@ describe('ApiService', () => {
 
       await ApiService.addAssistant({
         nom: 'Test',
-        dernier_diplome: diplome,
+        diplome_master_dea_ds: diplome,
         photo_passeport: photo,
         decision_nomination: nomination,
         decision_inscription: inscription,
@@ -374,7 +374,7 @@ describe('ApiService', () => {
       const [, fetchOptions] = global.fetch.mock.calls[0];
       const body = fetchOptions.body;
 
-      expect(body.get('dernier_diplome')).toBe(diplome);
+      expect(body.get('diplome_master_dea_ds')).toBe(diplome);
       expect(body.get('photo_passeport')).toBe(photo);
       expect(body.get('decision_nomination')).toBe(nomination);
       expect(body.get('decision_inscription')).toBe(inscription);
@@ -391,7 +391,7 @@ describe('ApiService', () => {
         commentaires: null,
         date_engagement: undefined,
         decision_nomination: undefined,
-        dernier_diplome: null,
+        diplome_master_dea_ds: null,
       });
 
       const [, fetchOptions] = global.fetch.mock.calls[0];
@@ -401,7 +401,7 @@ describe('ApiService', () => {
       expect(body.get('commentaires')).toBeNull();
       expect(body.get('date_engagement')).toBeNull();
       expect(body.get('decision_nomination')).toBeNull();
-      expect(body.get('dernier_diplome')).toBeNull();
+      expect(body.get('diplome_master_dea_ds')).toBeNull();
     });
 
     test('should handle 401 Unauthorized and logout', async () => {
@@ -463,7 +463,7 @@ describe('ApiService', () => {
         prime_institutionnelle: 'Oui',
         email: 'pierre.kabila@ulpgl.ac.cd',
         arrete_nomination: new File(['arrete'], 'arrete.pdf', { type: 'application/pdf' }),
-        dernier_diplome: new File(['diploma'], 'diploma.pdf', { type: 'application/pdf' }),
+        diplome_master_dea_ds: new File(['diploma'], 'diploma.pdf', { type: 'application/pdf' }),
         photo_passeport: new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
         decision_inscription: new File(['decision'], 'decision.pdf', { type: 'application/pdf' }),
       };
@@ -540,7 +540,7 @@ describe('ApiService', () => {
       await ApiService.addChefTravaux({
         nom: 'Test',
         arrete_nomination: arrete,
-        dernier_diplome: diplome,
+        diplome_master_dea_ds: diplome,
         photo_passeport: photo,
         decision_inscription: inscription,
       });
@@ -549,7 +549,7 @@ describe('ApiService', () => {
       const body = fetchOptions.body;
 
       expect(body.get('arrete_nomination')).toBe(arrete);
-      expect(body.get('dernier_diplome')).toBe(diplome);
+      expect(body.get('diplome_master_dea_ds')).toBe(diplome);
       expect(body.get('photo_passeport')).toBe(photo);
       expect(body.get('decision_inscription')).toBe(inscription);
     });
@@ -663,13 +663,13 @@ describe('ApiService', () => {
       await ApiService.updateAssistant(42, {
         nom: 'Test',
         photo_passeport: newPhoto,
-        dernier_diplome: null, // not a File — should be skipped
+        diplome_master_dea_ds: null, // not a File — should be skipped
       });
 
       const [, options] = global.fetch.mock.calls[0];
       const body = options.body;
       expect(body.get('photo_passeport')).toBe(newPhoto);
-      expect(body.get('dernier_diplome')).toBeNull();
+      expect(body.get('diplome_master_dea_ds')).toBeNull();
     });
 
     test('should handle 401 and logout', async () => {
@@ -755,13 +755,13 @@ describe('ApiService', () => {
       await ApiService.updateChefTravaux(7, {
         nom: 'Test',
         arrete_nomination: newArrete,
-        dernier_diplome: undefined, // should be skipped
+        diplome_master_dea_ds: undefined, // should be skipped
       });
 
       const [, options] = global.fetch.mock.calls[0];
       const body = options.body;
       expect(body.get('arrete_nomination')).toBe(newArrete);
-      expect(body.get('dernier_diplome')).toBeNull();
+      expect(body.get('diplome_master_dea_ds')).toBeNull();
     });
 
     test('should handle 401 and logout', async () => {

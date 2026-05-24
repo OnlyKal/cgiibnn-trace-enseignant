@@ -86,6 +86,11 @@ const SignupForm = ({ onSignupSuccess, onBackToLogin }) => {
       return;
     }
 
+    if (!formData.type_de_compte) {
+      showPopup('Veuillez sélectionner votre type de compte', 'error');
+      return;
+    }
+
     if (!formData.mot_de_passe.trim()) {
       showPopup('Veuillez entrer un mot de passe', 'error');
       return;
@@ -98,11 +103,6 @@ const SignupForm = ({ onSignupSuccess, onBackToLogin }) => {
 
     if (formData.mot_de_passe !== formData.mot_de_passe_confirm) {
       showPopup('Les mots de passe ne correspondent pas', 'error');
-      return;
-    }
-
-    if (!formData.type_de_compte) {
-      showPopup('Veuillez sélectionner votre type de compte', 'error');
       return;
     }
 

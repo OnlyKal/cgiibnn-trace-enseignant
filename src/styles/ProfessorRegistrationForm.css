@@ -109,9 +109,11 @@
   border-radius: 6px;
   font-weight: 600;
   z-index: 2000;
-  animation: slideIn 0.3s ease-out, slideOut 0.3s ease-out 3.7s forwards;
+  animation: slideIn 0.3s ease-out;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  max-width: 400px;
+  max-width: min(560px, calc(100vw - 40px));
+  white-space: pre-line;
+  line-height: 1.45;
 }
 
 .popup-error {
@@ -886,4 +888,3 @@ legend {
     font-size: 0.85rem;
   }
 }
-

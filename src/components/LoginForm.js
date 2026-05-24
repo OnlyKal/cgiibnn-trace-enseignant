@@ -28,6 +28,20 @@ const LoginForm = ({ onLoginSuccess, onSignupClick }) => {
     }, 4000);
   };
 
+  const getServerErrorMessage = (errorData) => {
+    if (!errorData || typeof errorData !== 'object') {
+      return 'Identifiants invalides';
+    }
+
+    if (errorData.errors && typeof errorData.errors === 'object') {
+      return Object.values(errorData.errors)
+        .flat()
+        .join('\n');
+    }
+
+    return errorData.message || errorData.detail || errorData.error || 'Identifiants invalides';
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({
@@ -46,50 +60,50 @@ const LoginForm = ({ onLoginSuccess, onSignupClick }) => {
 
 
     // Validation
-    if (!formData.email.trim()) {
+    const email = formData.email.trim().toLowerCase();
+    const motDePasse = formData.mot_de_passe;
+
+    if (!email) {
       showPopup('Veuillez entrer votre adresse email', 'error');
       return;
     }
 
-    if (!formData.mot_de_passe.trim()) {
+    if (!motDePasse.trim()) {
       showPopup('Veuillez entrer votre mot de passe', 'error');
       return;
     }
 
-    if (formData.mot_de_passe.length < 8) {
+    if (motDePasse.length < 8) {
       showPopup('Le mot de passe doit contenir au moins 8 caractères', 'error');
       return;
     }
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
+    if (!emailRegex.test(email)) {
       showPopup('Veuillez entrer une adresse email valide', 'error');
       return;
     }
 
     setLoading(true);
     try {
-      console.log('🔐 Tentative de connexion pour:', formData.email);
+      console.log('🔐 Tentative de connexion pour:', email);
       
       const data = await fetch(`${SERVER_URL}/api/enseignants/comptes/signin/`, {
         method: 'POST',
         headers: {
+          'Accept': 'application/json',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: formData.email,
-          mot_de_passe: formData.mot_de_passe,
+          email,
+          mot_de_passe: motDePasse,
         }),
         signal: AbortSignal.timeout(30000), // 30 seconds timeout
       }).then(async res => {
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
-          if (errData.errors && typeof errData.errors === 'object') {
-            const messages = Object.values(errData.errors).flat().join('\n');
-            throw new Error(messages);
-          }
-          throw new Error(errData.message || errData.detail || 'Identifiants invalides');
+          throw new Error(getServerErrorMessage(errData));
         }
         return res.json();
       });
