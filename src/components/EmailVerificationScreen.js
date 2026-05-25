@@ -4,6 +4,14 @@ import { FaEnvelope, FaClock } from 'react-icons/fa';
 import LoadingModal from './LoadingModal';
 import ApiService from '../services/ApiService';
 
+const RESEND_COOLDOWN_SECONDS = 10 * 60;
+
+const formatCountdown = (seconds) => {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
+};
+
 const EmailVerificationScreen = ({ userEmail, onVerificationComplete, userName, onLogout }) => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -50,9 +58,9 @@ const EmailVerificationScreen = ({ userEmail, onVerificationComplete, userName, 
     return () => clearInterval(interval);
   }, [onVerificationComplete]);
 
-  // Au montage, activer le compte à rebours 60 secondes pour éviter un double envoi
+  // Au montage, activer le compte à rebours pour éviter un double envoi
   useEffect(() => {
-    setCountdown(60);
+    setCountdown(RESEND_COOLDOWN_SECONDS);
     setIsResendDisabled(true);
   }, []);
 
@@ -82,7 +90,7 @@ const EmailVerificationScreen = ({ userEmail, onVerificationComplete, userName, 
       setMessageType('success');
       
       // Activer le compte à rebours
-      setCountdown(60);
+      setCountdown(RESEND_COOLDOWN_SECONDS);
       setIsResendDisabled(true);
     } catch (error) {
       let errorMsg = 'Erreur lors de l\'envoi de l\'email';
@@ -147,7 +155,7 @@ const EmailVerificationScreen = ({ userEmail, onVerificationComplete, userName, 
               <strong>{userEmail}</strong>
             </p>
             <p className="email-verification-card__hint">
-              Un email de confirmation a été envoyé.
+              Un email de confirmation a été envoyé. Si vous ne le retrouvez pas dans votre boîte de réception, vérifiez également votre dossier spam ou courrier indésirable.
             </p>
           </div>
 
@@ -171,7 +179,7 @@ const EmailVerificationScreen = ({ userEmail, onVerificationComplete, userName, 
           {/* Compte à rebours */}
           {isResendDisabled && countdown > 0 && (
             <div className="email-verification-card__countdown">
-              <FaClock /> Nouveau renvoi dans {countdown}s
+              <FaClock /> Nouveau renvoi dans {formatCountdown(countdown)}
             </div>
           )}
 

@@ -25,8 +25,8 @@ const ENDPOINT_MAP = {
 };
 
 const MIGRATION_TARGET_MAP = {
-  'Assistant': 'Chef de Travaux',
-  'Chef de Travaux': 'Professeur',
+  'Assistant': ['Chef de Travaux', 'Professeur'],
+  'Chef de Travaux': ['Professeur'],
 };
 
 const TITLE_MAP = {
@@ -55,6 +55,25 @@ const formatGradeActuel = (grade) => {
   return gradeLabels[grade] || grade;
 };
 
+const formatCategorieAssistant = (category) => {
+  const categoryLabels = {
+    Academique: 'Assistant Académique',
+    Recherche: 'Assistant de Recherche',
+  };
+
+  return categoryLabels[category] || category;
+};
+
+const isAssistantRecherche = (category = '') => {
+  const normalized = String(category).trim().toLowerCase();
+  return normalized === 'recherche' || normalized === 'assistant de recherche';
+};
+
+const shouldShowThirdCycleInfo = (d = {}) => (
+  !d.diplome_master_dea_ds &&
+  Boolean(d.etablissement_inscription_3cycle || d.decision_inscription || d.date_inscription || d.statut_apprenant)
+);
+
 const normalizeAccountType = (value = '') => {
   const normalized = String(value).trim().toLowerCase();
   if (normalized.includes('assistant')) return 'Assistant';
@@ -67,12 +86,24 @@ const normalizeAccountType = (value = '') => {
    Sub-components
 ───────────────────────────────────────────────────────────── */
 
-const DataRow = ({ label, value }) => (
-  <div className="mr-data-row">
-    <span className="mr-data-label">{label}</span>
-    <span className="mr-data-value">{value || <em className="mr-empty">Non renseigné</em>}</span>
-  </div>
+const isEmptyDisplayValue = (value) => (
+  value === null ||
+  value === undefined ||
+  value === '' ||
+  value === 'Non renseigné' ||
+  value === 'Non fourni'
 );
+
+const DataRow = ({ label, value, hideEmpty = false }) => {
+  if (hideEmpty && isEmptyDisplayValue(value)) return null;
+
+  return (
+    <div className="mr-data-row">
+      <span className="mr-data-label">{label}</span>
+      <span className="mr-data-value">{value || <em className="mr-empty">Non renseigné</em>}</span>
+    </div>
+  );
+};
 
 const FileLink = ({ path }) => {
   if (!path) return <em className="mr-empty">Non fourni</em>;
@@ -83,6 +114,11 @@ const FileLink = ({ path }) => {
       📄 {fileName}
     </a>
   );
+};
+
+const FileRow = ({ label, path }) => {
+  if (isEmptyDisplayValue(path)) return null;
+  return <DataRow label={label} value={<FileLink path={path} />} />;
 };
 
 const Section = ({ title, children }) => (
@@ -125,7 +161,7 @@ const ProfesseurData = ({ d }) => (
       {d.type_diplome && <DataRow label="Type de diplôme de Doctorat" value={d.type_diplome} />}
       <DataRow label="Possède diplôme" value={d.possede_diplome} />
       <DataRow label="Numéro arrêté équivalence" value={d.numero_arrete_equivalence} />
-      <DataRow label="Type diplôme D.E.A/D.E.S" value={d.type_diplome_dea_des} />
+      <DataRow label="Type de diplôme Master / D.E.A / D.E.S" value={d.type_diplome_dea_des} hideEmpty />
       <DataRow label="Université d'obtention de votre master/D.E.A/D.E.S" value={d.universite_master_dea_ds} />
       <DataRow label="Pays d'obtention de votre Master/D.E.A/D.E.S" value={d.pays_master_dea_ds} />
       <DataRow label="Date d'obtention de votre Master/D.E.A/D.E.S" value={d.date_obtention_master_dea_ds} />
@@ -152,69 +188,70 @@ const ProfesseurData = ({ d }) => (
       <DataRow label="Diplôme de Doctorat" value={<FileLink path={d.copie_diplome} />} />
     </Section>
 
-    <Section title="Contact">
-      <DataRow label="Email" value={d.email} />
-      <DataRow label="Téléphone" value={d.telephone} />
-    </Section>
   </>
 );
 
 const AssistantData = ({ d }) => (
   <>
     <Section title="Informations Personnelles">
-      {!isPrivateEtablissement(d.type_etablissement) && <DataRow label="Matricule" value={d.matricule} />}
-      <DataRow label="Nom" value={d.nom} />
-      <DataRow label="Postnom" value={d.postnom} />
-      <DataRow label="Prénom" value={d.prenom} />
-      <DataRow label="Sexe" value={d.sexe === 'M' ? 'Masculin' : d.sexe === 'F' ? 'Féminin' : d.sexe} />
-      <DataRow label="Date de naissance" value={d.date_naissance} />
-      <DataRow label="Lieu de naissance" value={d.lieu_naissance} />
+      {!isPrivateEtablissement(d.type_etablissement) && <DataRow label="Matricule" value={d.matricule} hideEmpty />}
+      <DataRow label="Nom" value={d.nom} hideEmpty />
+      <DataRow label="Postnom" value={d.postnom} hideEmpty />
+      <DataRow label="Prénom" value={d.prenom} hideEmpty />
+      <DataRow label="Sexe" value={d.sexe === 'M' ? 'Masculin' : d.sexe === 'F' ? 'Féminin' : d.sexe} hideEmpty />
+      <DataRow label="Date de naissance" value={d.date_naissance} hideEmpty />
+      <DataRow label="Lieu de naissance" value={d.lieu_naissance} hideEmpty />
     </Section>
 
     <Section title="Informations Administratives">
-      <DataRow label="Date d'engagement" value={d.date_engagement} />
-      <DataRow label="Établissement d'attache" value={d.etablissement_attache} />
-      {d.type_etablissement && <DataRow label="Type d'établissement" value={d.type_etablissement === 'Public' ? 'Établissement Public' : d.type_etablissement === 'Privé' ? 'Établissement Privé' : d.type_etablissement} />}
-      <DataRow label="Domaine de recherche" value={d.domaine_recherche} />
-      <DataRow label="Mandat Assistant" value={d.mandat_assistant} />
-      <DataRow label="Type de diplôme Master / D.E.A / D.E.S" value={d.type_diplome} />
-      {!isPrivateEtablissement(d.type_etablissement) && <DataRow label="Salaire de base" value={d.salaire_base} />}
-      {!isPrivateEtablissement(d.type_etablissement) && <DataRow label="Prime institutionnelle" value={d.prime_institutionnelle} />}
+      <DataRow label="Date d'engagement" value={d.date_engagement} hideEmpty />
+      <DataRow label="Établissement d'attache" value={d.etablissement_attache} hideEmpty />
+      {d.type_etablissement && <DataRow label="Type d'établissement" value={d.type_etablissement === 'Public' ? 'Établissement Public' : d.type_etablissement === 'Privé' ? 'Établissement Privé' : d.type_etablissement} hideEmpty />}
+      <DataRow label="Domaine de recherche" value={d.domaine_recherche} hideEmpty />
+      <DataRow label="Mandat Assistant" value={d.mandat_assistant} hideEmpty />
+      <DataRow label="Catégorie d'Assistant" value={formatCategorieAssistant(d.categorie_assistant)} hideEmpty />
+      {isAssistantRecherche(d.categorie_assistant) && (
+        <DataRow label="Centre de recherche" value={d.centre_laboratoire_recherche} hideEmpty />
+      )}
+      <DataRow label="Type de diplôme Master / D.E.A / D.E.S" value={d.type_diplome} hideEmpty />
+      {!isPrivateEtablissement(d.type_etablissement) && <DataRow label="Salaire de base" value={d.salaire_base} hideEmpty />}
+      {!isPrivateEtablissement(d.type_etablissement) && <DataRow label="Prime institutionnelle" value={d.prime_institutionnelle} hideEmpty />}
     </Section>
 
-    <Section title="Inscriptions & Statut">
-      <DataRow label="Statut d'apprenant" value={d.statut_apprenant} />
-      {d.etablissement_inscription_3cycle && <DataRow label="Établissement inscription 3e cycle" value={d.etablissement_inscription_3cycle} />}
-      {d.date_inscription && <DataRow label="Date d'inscription" value={d.date_inscription} />}
-    </Section>
+    {shouldShowThirdCycleInfo(d) && (
+      <Section title="Inscriptions & Statut">
+        <DataRow label="Établissement inscription 3e cycle" value={d.etablissement_inscription_3cycle} hideEmpty />
+        <DataRow label="Date d'inscription" value={d.date_inscription} hideEmpty />
+        <DataRow label="Statut d'apprenant" value={d.statut_apprenant} hideEmpty />
+      </Section>
+    )}
 
     <Section title="Diplômes par niveau">
-      <DataRow label="Diplôme d'État" value={<FileLink path={d.diplome_etat} />} />
-      <DataRow label="Diplôme de Graduat" value={<FileLink path={d.diplome_graduat} />} />
-      <DataRow label="Diplôme de Licence" value={<FileLink path={d.diplome_licence} />} />
-      <DataRow label="Diplôme Master/D.E.A/D.E.S" value={<FileLink path={d.diplome_master_dea_ds} />} />
+      <FileRow label="Diplôme d'État" path={d.diplome_etat} />
+      <FileRow label="Diplôme de Graduat" path={d.diplome_graduat} />
+      <FileRow label="Diplôme de Licence" path={d.diplome_licence} />
+      <FileRow label="Diplôme Master/D.E.A/D.E.S" path={d.diplome_master_dea_ds} />
       {d.diplome_master_dea_ds && <>
-        {d.universite_master_dea_ds && <DataRow label="Université d'obtention de votre master/D.E.A/D.E.S" value={d.universite_master_dea_ds} />}
-        {d.pays_master_dea_ds && <DataRow label="Pays d'obtention de votre Master/D.E.A/D.E.S" value={d.pays_master_dea_ds} />}
-        {d.date_obtention_master_dea_ds && <DataRow label="Date d'obtention de votre Master/D.E.A/D.E.S" value={d.date_obtention_master_dea_ds} />}
+        <DataRow label="Université d'obtention de votre master/D.E.A/D.E.S" value={d.universite_master_dea_ds} hideEmpty />
+        <DataRow label="Pays d'obtention de votre Master/D.E.A/D.E.S" value={d.pays_master_dea_ds} hideEmpty />
+        <DataRow label="Date d'obtention de votre Master/D.E.A/D.E.S" value={d.date_obtention_master_dea_ds} hideEmpty />
       </>}
     </Section>
 
     <Section title="Documents">
-      <DataRow label="Photo passeport" value={<FileLink path={d.photo_passeport} />} />
-      <DataRow label="Décision de nomination" value={<FileLink path={d.decision_nomination} />} />
-      <DataRow label="Décision d'inscription" value={<FileLink path={d.decision_inscription} />} />
-      <DataRow label="Charge horaire" value={<FileLink path={d.charge_horaire} />} />
+      <FileRow label="Photo passeport" path={d.photo_passeport} />
+      <FileRow label="Décision de nomination" path={d.decision_nomination} />
+      {shouldShowThirdCycleInfo(d) && (
+        <FileRow label="Décision d'inscription" path={d.decision_inscription} />
+      )}
+      {!isAssistantRecherche(d.categorie_assistant) && (
+        <FileRow label="Charge horaire" path={d.charge_horaire} />
+      )}
     </Section>
 
-    <Section title="Contact">
-      <DataRow label="Email" value={d.email} />
-      <DataRow label="Téléphone" value={d.telephone} />
-    </Section>
- 
-    {d.commentaires && (
+    {!isEmptyDisplayValue(d.commentaires) && (
       <Section title="Commentaires">
-        <DataRow label="Commentaires" value={d.commentaires} />
+        <DataRow label="Commentaires" value={d.commentaires} hideEmpty />
       </Section>
     )}
   </>
@@ -223,58 +260,57 @@ const AssistantData = ({ d }) => (
 const ChefTravauxData = ({ d }) => (
   <>
     <Section title="Informations Personnelles">
-      {!isPrivateEtablissement(d.type_etablissement) && <DataRow label="Matricule" value={d.matricule} />}
-      <DataRow label="Nom" value={d.nom} />
-      <DataRow label="Postnom" value={d.postnom} />
-      <DataRow label="Prénom" value={d.prenom} />
-      <DataRow label="Sexe" value={d.sexe === 'M' ? 'Masculin' : d.sexe === 'F' ? 'Féminin' : d.sexe} />
-      <DataRow label="Date de naissance" value={d.date_naissance} />
-      <DataRow label="Lieu de naissance" value={d.lieu_naissance} />
+      {!isPrivateEtablissement(d.type_etablissement) && <DataRow label="Matricule" value={d.matricule} hideEmpty />}
+      <DataRow label="Nom" value={d.nom} hideEmpty />
+      <DataRow label="Postnom" value={d.postnom} hideEmpty />
+      <DataRow label="Prénom" value={d.prenom} hideEmpty />
+      <DataRow label="Sexe" value={d.sexe === 'M' ? 'Masculin' : d.sexe === 'F' ? 'Féminin' : d.sexe} hideEmpty />
+      <DataRow label="Date de naissance" value={d.date_naissance} hideEmpty />
+      <DataRow label="Lieu de naissance" value={d.lieu_naissance} hideEmpty />
     </Section>
 
     <Section title="Informations Administratives">
-      <DataRow label="Date d'engagement" value={d.date_engagement} />
-      <DataRow label="Établissement d'attache" value={d.etablissement_attache} />
-      <DataRow label="Type d'établissement" value={d.type_etablissement === 'Public' ? 'Établissement Public' : d.type_etablissement === 'Privé' ? 'Établissement Privé' : d.type_etablissement} />
-      <DataRow label="Domaine de recherche" value={d.domaine_recherche} />
-      <DataRow label="Type de diplôme Master / D.E.A / D.E.S" value={d.type_diplome} />
-      {!isPrivateEtablissement(d.type_etablissement) && <DataRow label="Salaire de base" value={d.salaire_base} />}
-      {!isPrivateEtablissement(d.type_etablissement) && <DataRow label="Prime institutionnelle" value={d.prime_institutionnelle} />}
+      <DataRow label="Date d'engagement" value={d.date_engagement} hideEmpty />
+      <DataRow label="Établissement d'attache" value={d.etablissement_attache} hideEmpty />
+      <DataRow label="Type d'établissement" value={d.type_etablissement === 'Public' ? 'Établissement Public' : d.type_etablissement === 'Privé' ? 'Établissement Privé' : d.type_etablissement} hideEmpty />
+      <DataRow label="Domaine de recherche" value={d.domaine_recherche} hideEmpty />
+      <DataRow label="Type de diplôme Master / D.E.A / D.E.S" value={d.type_diplome} hideEmpty />
+      {!isPrivateEtablissement(d.type_etablissement) && <DataRow label="Salaire de base" value={d.salaire_base} hideEmpty />}
+      {!isPrivateEtablissement(d.type_etablissement) && <DataRow label="Prime institutionnelle" value={d.prime_institutionnelle} hideEmpty />}
     </Section>
 
-    <Section title="Inscriptions & Statut">
-      <DataRow label="Statut d'apprenant" value={d.statut_apprenant} />
-      <DataRow label="Date d'inscription" value={d.date_inscription} />
-      {d.etablissement_inscription_3cycle && <DataRow label="Établissement inscription 3e cycle" value={d.etablissement_inscription_3cycle} />}
-    </Section>
+    {shouldShowThirdCycleInfo(d) && (
+      <Section title="Inscriptions & Statut">
+        <DataRow label="Établissement inscription 3e cycle" value={d.etablissement_inscription_3cycle} hideEmpty />
+        <DataRow label="Date d'inscription" value={d.date_inscription} hideEmpty />
+        <DataRow label="Statut d'apprenant" value={d.statut_apprenant} hideEmpty />
+      </Section>
+    )}
 
     <Section title="Diplômes par niveau">
-      <DataRow label="Diplôme d'État" value={<FileLink path={d.diplome_etat} />} />
-      <DataRow label="Diplôme de Graduat" value={<FileLink path={d.diplome_graduat} />} />
-      <DataRow label="Diplôme de Licence" value={<FileLink path={d.diplome_licence} />} />
-      <DataRow label="Diplôme Master/D.E.A/D.E.S" value={<FileLink path={d.diplome_master_dea_ds} />} />
+      <FileRow label="Diplôme d'État" path={d.diplome_etat} />
+      <FileRow label="Diplôme de Graduat" path={d.diplome_graduat} />
+      <FileRow label="Diplôme de Licence" path={d.diplome_licence} />
+      <FileRow label="Diplôme Master/D.E.A/D.E.S" path={d.diplome_master_dea_ds} />
       {d.diplome_master_dea_ds && <>
-        {d.universite_master_dea_ds && <DataRow label="Université d'obtention de votre master/D.E.A/D.E.S" value={d.universite_master_dea_ds} />}
-        {d.pays_master_dea_ds && <DataRow label="Pays d'obtention de votre Master/D.E.A/D.E.S" value={d.pays_master_dea_ds} />}
-        {d.date_obtention_master_dea_ds && <DataRow label="Date d'obtention de votre Master/D.E.A/D.E.S" value={d.date_obtention_master_dea_ds} />}
+        <DataRow label="Université d'obtention de votre master/D.E.A/D.E.S" value={d.universite_master_dea_ds} hideEmpty />
+        <DataRow label="Pays d'obtention de votre Master/D.E.A/D.E.S" value={d.pays_master_dea_ds} hideEmpty />
+        <DataRow label="Date d'obtention de votre Master/D.E.A/D.E.S" value={d.date_obtention_master_dea_ds} hideEmpty />
       </>}
     </Section>
 
     <Section title="Documents">
-      <DataRow label="Arrêté de nomination" value={<FileLink path={d.arrete_nomination} />} />
-      <DataRow label="Photo passeport" value={<FileLink path={d.photo_passeport} />} />
-      <DataRow label="Décision d'inscription" value={<FileLink path={d.decision_inscription} />} />
-      <DataRow label="Charge horaire" value={<FileLink path={d.charge_horaire} />} />
+      <FileRow label="Arrêté de nomination" path={d.arrete_nomination} />
+      <FileRow label="Photo passeport" path={d.photo_passeport} />
+      {shouldShowThirdCycleInfo(d) && (
+        <FileRow label="Décision d'inscription" path={d.decision_inscription} />
+      )}
+      <FileRow label="Charge horaire" path={d.charge_horaire} />
     </Section>
 
-    <Section title="Contact">
-      <DataRow label="Email" value={d.email} />
-      <DataRow label="Téléphone" value={d.telephone} />
-    </Section>
-
-    {d.commentaires && (
+    {!isEmptyDisplayValue(d.commentaires) && (
       <Section title="Commentaires">
-        <DataRow label="Commentaires" value={d.commentaires} />
+        <DataRow label="Commentaires" value={d.commentaires} hideEmpty />
       </Section>
     )}
   </>
@@ -292,6 +328,7 @@ const MyRecord = ({ currentUser, onCreateRecord, onEditRecord, onLogout, onUserU
   const [migrationError, setMigrationError] = useState('');
   const [migrationLoading, setMigrationLoading] = useState(false);
   const [showMigrationModal, setShowMigrationModal] = useState(false);
+  const [selectedMigrationTarget, setSelectedMigrationTarget] = useState('');
   const [celebration, setCelebration] = useState(null);
   const [showProfileSidebar, setShowProfileSidebar] = useState(false);
 
@@ -373,7 +410,8 @@ const MyRecord = ({ currentUser, onCreateRecord, onEditRecord, onLogout, onUserU
 
   const title = TITLE_MAP[resolvedType] || 'Mon Dossier';
   const subtitle = SUBTITLE_MAP[resolvedType] || 'MINESURSI';
-  const migrationTarget = MIGRATION_TARGET_MAP[resolvedType];
+  const migrationTargets = MIGRATION_TARGET_MAP[resolvedType] || [];
+  const migrationTarget = selectedMigrationTarget;
   const migrationTargetLabel = migrationTarget === 'Professeur' ? 'Professeur' : 'Chef de Travaux';
   const confettiPieces = Array.from({ length: 34 }, (_, index) => index);
 
@@ -388,7 +426,12 @@ const MyRecord = ({ currentUser, onCreateRecord, onEditRecord, onLogout, onUserU
   }, [celebration]);
 
   const handleMigration = async () => {
-    if (!compteId || !migrationTarget) return;
+    if (!compteId || !migrationTarget || !migrationTargets.includes(migrationTarget)) return;
+    if (status !== 'has_record') {
+      setMigrationError('La migration est possible uniquement si vous avez déjà un dossier.');
+      setShowMigrationModal(false);
+      return;
+    }
 
     setMigrationLoading(true);
     setMigrationMessage('');
@@ -432,6 +475,7 @@ const MyRecord = ({ currentUser, onCreateRecord, onEditRecord, onLogout, onUserU
         message: `Félicitations ! Votre migration vers le grade de ${migrationTargetLabel} a été validée avec succès.`,
       });
       setShowMigrationModal(false);
+      setSelectedMigrationTarget('');
     } catch (error) {
       setMigrationError(error.message || 'Impossible de migrer ce compte.');
     } finally {
@@ -439,7 +483,15 @@ const MyRecord = ({ currentUser, onCreateRecord, onEditRecord, onLogout, onUserU
     }
   };
 
-  const openMigrationModal = () => {
+  const openMigrationModal = (target) => {
+    if (status !== 'has_record') {
+      setMigrationMessage('');
+      setMigrationError('La migration est possible uniquement si vous avez déjà un dossier.');
+      return;
+    }
+    if (!target || !migrationTargets.includes(target)) return;
+
+    setSelectedMigrationTarget(target);
     setMigrationMessage('');
     setMigrationError('');
     setShowMigrationModal(true);
@@ -525,16 +577,6 @@ const MyRecord = ({ currentUser, onCreateRecord, onEditRecord, onLogout, onUserU
               <strong>{resolvedType || accountType}</strong>.
             </p>
             <div className="mr-state-actions">
-              {migrationTarget && compteId && (
-                <button
-                  type="button"
-                  className="mr-btn mr-btn-migrate"
-                  onClick={openMigrationModal}
-                  disabled={migrationLoading}
-                >
-                  {migrationLoading ? 'Migration...' : `Migrer vers ${migrationTarget}`}
-                </button>
-              )}
               <button
                 type="button"
                 className="mr-btn mr-btn-primary mr-btn-create"
@@ -562,16 +604,17 @@ const MyRecord = ({ currentUser, onCreateRecord, onEditRecord, onLogout, onUserU
                 )}
               </div>
               <div className="mr-record-topbar-actions">
-                {migrationTarget && (
+                {migrationTargets.map((target) => (
                   <button
+                    key={target}
                     type="button"
                     className="mr-btn mr-btn-migrate"
-                    onClick={openMigrationModal}
-                    disabled={migrationLoading}
+                    onClick={() => openMigrationModal(target)}
+                    disabled={migrationLoading || !compteId}
                   >
-                    {migrationLoading ? 'Migration...' : `Migrer vers ${migrationTarget}`}
+                    {migrationLoading && selectedMigrationTarget === target ? 'Migration...' : `Migrer vers ${target}`}
                   </button>
-                )}
+                ))}
                 <button
                   type="button"
                   className="mr-btn mr-btn-secondary"
@@ -617,7 +660,12 @@ const MyRecord = ({ currentUser, onCreateRecord, onEditRecord, onLogout, onUserU
       />
 
       {showMigrationModal && migrationTarget && (
-        <div className="mr-modal-overlay" role="presentation" onClick={() => !migrationLoading && setShowMigrationModal(false)}>
+        <div className="mr-modal-overlay" role="presentation" onClick={() => {
+          if (!migrationLoading) {
+            setShowMigrationModal(false);
+            setSelectedMigrationTarget('');
+          }
+        }}>
           <div className="mr-modal mr-migration-modal" role="dialog" aria-modal="true" aria-labelledby="migration-modal-title" onClick={(e) => e.stopPropagation()}>
             <div className="mr-modal-header">
               <span className="mr-modal-warning-icon" aria-hidden="true">
@@ -644,7 +692,10 @@ const MyRecord = ({ currentUser, onCreateRecord, onEditRecord, onLogout, onUserU
               <button
                 type="button"
                 className="mr-btn mr-btn-secondary"
-                onClick={() => setShowMigrationModal(false)}
+                onClick={() => {
+                  setShowMigrationModal(false);
+                  setSelectedMigrationTarget('');
+                }}
                 disabled={migrationLoading}
               >
                 Annuler

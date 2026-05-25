@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { API_BASE_URL, SERVER_URL } from '../config';
 import AuthService from '../services/AuthService';
 import '../styles/ProfessorRegistrationForm.css';
-import { FaUser, FaGraduationCap, FaFileAlt, FaPhone, FaCheckCircle, FaEye, FaSignOutAlt, FaArrowLeft } from 'react-icons/fa';
+import { FaUser, FaGraduationCap, FaFileAlt, FaCheckCircle, FaEye, FaSignOutAlt, FaArrowLeft } from 'react-icons/fa';
 import LoadingModal from './LoadingModal';
 import UserInfo from './UserInfo';
 import ProfileSidebar from './ProfileSidebar';
@@ -26,6 +26,16 @@ const formatGradeActuel = (grade) => {
 
   return gradeLabels[grade] || grade;
 };
+
+const isAssistantRecherche = (category = '') => {
+  const normalized = String(category).trim().toLowerCase();
+  return normalized === 'recherche' || normalized === 'assistant de recherche';
+};
+
+const shouldShowThirdCycleInfo = (data = {}) => (
+  !data.diplome_master_dea_ds &&
+  Boolean(data.etablissement_inscription_3cycle || data.decision_inscription || data.date_inscription || data.statut_apprenant)
+);
 
 // Catégories d'assistant
 const CATEGORIE_ASSISTANT_CHOICES = [
@@ -4058,8 +4068,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
     universite_attache: '',
     universite_attache_precisee: '',
     date_engagement: '',
-    email: '',
-    telephone: '',
     reference_dernier_arrete: '',
     prime_institutionnelle: '',
     salaire_base: '',
@@ -4082,6 +4090,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
     has_diplome_etat: '',
     has_diplome_graduat: '',
     has_diplome_licence: '',
+    has_inscription_dea_des: '',
     has_diplome_master_dea_ds: '',
     universite_master_dea_ds: '',
     pays_master_dea_ds: '',
@@ -4152,8 +4161,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
         sexe: d.sexe || '',
         lieu_naissance: d.lieu_naissance || '',
         date_naissance: d.date_naissance || '',
-        telephone: d.telephone || '',
-        email: d.email || '',
         domaine_recherche: d.domaine_recherche || '',
         prime_institutionnelle: d.prime_institutionnelle || '',
         salaire_base: d.salaire_base || '',
@@ -4174,6 +4181,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
         has_diplome_etat: d.diplome_etat ? 'Oui' : '',
         has_diplome_graduat: d.diplome_graduat ? 'Oui' : '',
         has_diplome_licence: d.diplome_licence ? 'Oui' : '',
+        has_inscription_dea_des: !d.diplome_master_dea_ds && (d.etablissement_inscription_3cycle || d.date_inscription || d.statut_apprenant) ? 'Oui' : '',
         has_diplome_master_dea_ds: d.diplome_master_dea_ds ? 'Oui' : '',
         universite_master_dea_ds: d.universite_master_dea_ds || '',
         pays_master_dea_ds: d.pays_master_dea_ds || '',
@@ -4314,6 +4322,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
         draftData.etablissement_inscription_3cycle = null;
         draftData.decision_inscription_ass_ct = null;
         draftData.date_inscription = '';
+        draftData.has_inscription_dea_des = '';
         draftData.diplome_etat = null;
         draftData.diplome_graduat = null;
         draftData.diplome_licence = null;
@@ -4358,6 +4367,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
         draftData.etablissement_inscription_3cycle = null;
         draftData.decision_inscription_ass_ct = null;
         draftData.date_inscription = '';
+        draftData.has_inscription_dea_des = '';
         draftData.diplome_etat = null;
         draftData.diplome_graduat = null;
         draftData.diplome_licence = null;
@@ -4459,6 +4469,64 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
     if (name === 'grade_actuel' && newValue === 'DT') {
       nextFormData.reference_dernier_arrete = '';
       nextChangedFields.reference_dernier_arrete = '';
+    }
+
+    if (name === 'has_diplome_licence') {
+      if (newValue !== 'Oui') {
+        nextFormData.diplome_licence = null;
+        nextChangedFields.diplome_licence = null;
+      }
+    }
+
+    if (name === 'has_diplome_master_dea_ds') {
+      if (newValue === 'Oui') {
+        nextFormData.has_inscription_dea_des = '';
+        nextFormData.etablissement_inscription_3cycle = '';
+        nextFormData.decision_inscription_ass_ct = null;
+        nextFormData.date_inscription = '';
+        nextFormData.statut_apprenant = '';
+        nextChangedFields.has_inscription_dea_des = '';
+        nextChangedFields.etablissement_inscription_3cycle = '';
+        nextChangedFields.decision_inscription_ass_ct = null;
+        nextChangedFields.date_inscription = '';
+        nextChangedFields.statut_apprenant = '';
+      } else {
+        nextFormData.diplome_master_dea_ds = null;
+        nextFormData.type_diplome = '';
+        nextFormData.type_diplome_dea_des = '';
+        nextFormData.universite_master_dea_ds = '';
+        nextFormData.pays_master_dea_ds = '';
+        nextFormData.date_obtention_master_dea_ds = '';
+        nextChangedFields.diplome_master_dea_ds = null;
+        nextChangedFields.type_diplome = '';
+        nextChangedFields.type_diplome_dea_des = '';
+        nextChangedFields.universite_master_dea_ds = '';
+        nextChangedFields.pays_master_dea_ds = '';
+        nextChangedFields.date_obtention_master_dea_ds = '';
+        if (newValue !== 'Non') {
+          nextFormData.has_inscription_dea_des = '';
+          nextFormData.etablissement_inscription_3cycle = '';
+          nextFormData.decision_inscription_ass_ct = null;
+          nextFormData.date_inscription = '';
+          nextFormData.statut_apprenant = '';
+          nextChangedFields.has_inscription_dea_des = '';
+          nextChangedFields.etablissement_inscription_3cycle = '';
+          nextChangedFields.decision_inscription_ass_ct = null;
+          nextChangedFields.date_inscription = '';
+          nextChangedFields.statut_apprenant = '';
+        }
+      }
+    }
+
+    if (name === 'has_inscription_dea_des' && newValue !== 'Oui') {
+      nextFormData.etablissement_inscription_3cycle = '';
+      nextFormData.decision_inscription_ass_ct = null;
+      nextFormData.date_inscription = '';
+      nextFormData.statut_apprenant = '';
+      nextChangedFields.etablissement_inscription_3cycle = '';
+      nextChangedFields.decision_inscription_ass_ct = null;
+      nextChangedFields.date_inscription = '';
+      nextChangedFields.statut_apprenant = '';
     }
 
     setFormData(nextFormData);
@@ -4722,21 +4790,43 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
   const renderModalContent = () => {
     if (!viewedData) return null;
 
-    const DataRow = ({ label, value }) => (
-      <div className="data-row">
-        <span className="data-label">{label}:</span>
-        <span className="data-value">{value || 'Non renseigné'}</span>
-      </div>
+    const isEmptyDisplayValue = (value) => (
+      value === null ||
+      value === undefined ||
+      value === '' ||
+      value === 'Non renseigné' ||
+      value === 'Non fourni'
     );
 
+    const DataRow = ({ label, value, hideEmpty = viewType === 'Assistant' || viewType === 'CT' }) => {
+      if (hideEmpty && isEmptyDisplayValue(value)) return null;
+
+      return (
+        <div className="data-row">
+          <span className="data-label">{label}:</span>
+          <span className="data-value">{value || 'Non renseigné'}</span>
+        </div>
+      );
+    };
+
     const FileLink = ({ path }) => {
-      if (!path) return <span>Non fourni</span>;
+      if (isEmptyDisplayValue(path)) return null;
       const fileName = path.split('/').pop();
       const fullUrl = path.startsWith('http') ? path : `${SERVER_URL}${path}`;
       return (
         <a href={fullUrl} target="_blank" rel="noopener noreferrer" className="file-link" title={fileName}>
           📄 {fileName}
         </a>
+      );
+    };
+
+    const FileDataRow = ({ label, path }) => {
+      if (isEmptyDisplayValue(path)) return null;
+      return (
+        <div className="data-row">
+          <span className="data-label">{label}:</span>
+          <span className="data-value"><FileLink path={path} /></span>
+        </div>
       );
     };
 
@@ -4811,11 +4901,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
             </div>
           </DataSection>
 
-          <DataSection title="Informations de Contact">
-            <DataRow label="Email" value={viewedData.email} />
-            <DataRow label="Téléphone" value={viewedData.telephone} />
-          </DataSection>
-
           {viewedData.created_at && (
             <DataSection title="Métadonnées">
               <DataRow label="Date de création" value={new Date(viewedData.created_at).toLocaleDateString('fr-FR')} />
@@ -4836,60 +4921,47 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
             )}
             <DataRow label="Nom" value={viewedData.nom} />
             <DataRow label="Postnom" value={viewedData.postnom} />
-            <DataRow label="Prenom" value={viewedData.prenom || 'Non renseigné'} />
-            <DataRow label="Sexe" value={viewedData.sexe === 'M' ? 'Masculin' : 'Féminin'} />
-            <DataRow label="Date de naissance" value={viewedData.date_naissance} />
-            <DataRow label="Lieu de naissance" value={viewedData.lieu_naissance} />
-          </DataSection>
-
-          <DataSection title="Informations de Contact">
-            <DataRow label="Téléphone" value={viewedData.telephone} />
-            <DataRow label="Email" value={viewedData.email || 'Non renseigné'} />
+            <DataRow label="Prenom" value={viewedData.prenom} hideEmpty />
+            <DataRow label="Sexe" value={viewedData.sexe === 'M' ? 'Masculin' : viewedData.sexe === 'F' ? 'Féminin' : viewedData.sexe} hideEmpty />
+            <DataRow label="Date de naissance" value={viewedData.date_naissance} hideEmpty />
+            <DataRow label="Lieu de naissance" value={viewedData.lieu_naissance} hideEmpty />
           </DataSection>
 
           <DataSection title="Informations Administratives">
-            <DataRow label="Date d'engagement" value={viewedData.date_engagement} />
-            <DataRow label="Domaine de recherche" value={viewedData.domaine_recherche} />
-            <DataRow label="Établissement d'attache" value={viewedData.etablissement_attache} />
-            <DataRow label="Mandat Assistant" value={viewedData.mandat_assistant || 'Non renseigné'} />
-            <DataRow label="Catégorie d'Assistant" value={viewedData.categorie_assistant || 'Non renseigné'} />
+            <DataRow label="Date d'engagement" value={viewedData.date_engagement} hideEmpty />
+            <DataRow label="Domaine de recherche" value={viewedData.domaine_recherche} hideEmpty />
+            <DataRow label="Établissement d'attache" value={viewedData.etablissement_attache} hideEmpty />
+            <DataRow label="Mandat Assistant" value={viewedData.mandat_assistant} hideEmpty />
+            <DataRow label="Catégorie d'Assistant" value={viewedData.categorie_assistant} hideEmpty />
             {viewedData.categorie_assistant === 'Recherche' && (
-              <DataRow label="Centre/Laboratoire de Recherche" value={viewedData.centre_laboratoire_recherche || 'Non renseigné'} />
+              <DataRow label="Centre/Laboratoire de Recherche" value={viewedData.centre_laboratoire_recherche} hideEmpty />
             )}
             {!isPrivateEtablissement(viewedData.type_etablissement) && (
-              <DataRow label="Prime institutionnelle" value={viewedData.prime_institutionnelle || 'Non renseigné'} />
+              <DataRow label="Prime institutionnelle" value={viewedData.prime_institutionnelle} hideEmpty />
             )}
           </DataSection>
 
-          <DataSection title="Inscriptions et Statut">
-            <DataRow label="Établissement inscription 3e cycle" value={viewedData.etablissement_inscription_3cycle} />
-            <DataRow label="Statut d'apprenant" value={viewedData.statut_apprenant} />
-            <DataRow label="Date d'inscription" value={viewedData.date_inscription || 'Non renseignée'} />
-          </DataSection>
+          {shouldShowThirdCycleInfo(viewedData) && (
+            <DataSection title="Inscriptions et Statut">
+              <DataRow label="Établissement inscription 3e cycle" value={viewedData.etablissement_inscription_3cycle} hideEmpty />
+              <DataRow label="Date d'inscription" value={viewedData.date_inscription} hideEmpty />
+              <DataRow label="Statut d'apprenant" value={viewedData.statut_apprenant} hideEmpty />
+            </DataSection>
+          )}
 
           <DataSection title="Documents">
-            <div className="data-row">
-              <span className="data-label">Photo passeport:</span>
-              <span className="data-value"><FileLink path={viewedData.photo_passeport} /></span>
-            </div>
-            <div className="data-row">
-              <span className="data-label">Décision de nomination:</span>
-              <span className="data-value"><FileLink path={viewedData.decision_nomination} /></span>
-            </div>
-            <div className="data-row">
-              <span className="data-label">Décision d'inscription:</span>
-              <span className="data-value"><FileLink path={viewedData.decision_inscription} /></span>
-            </div>
-            {viewedData.categorie_assistant === 'Academique' && (
-              <div className="data-row">
-                <span className="data-label">Charge horaire:</span>
-                <span className="data-value"><FileLink path={viewedData.charge_horaire} /></span>
-              </div>
+            <FileDataRow label="Photo passeport" path={viewedData.photo_passeport} />
+            <FileDataRow label="Décision de nomination" path={viewedData.decision_nomination} />
+            {shouldShowThirdCycleInfo(viewedData) && (
+              <FileDataRow label="Décision d'inscription" path={viewedData.decision_inscription} />
+            )}
+            {!isAssistantRecherche(viewedData.categorie_assistant) && (
+              <FileDataRow label="Charge horaire" path={viewedData.charge_horaire} />
             )}
           </DataSection>
 
           <DataSection title="Confirmation">
-            <DataRow label="Commentaires" value={viewedData.commentaires || 'Aucun commentaire'} />
+            <DataRow label="Commentaires" value={viewedData.commentaires} hideEmpty />
             <DataRow label="Informations confirmées" value={viewedData.informations_vraies ? 'Oui ✓' : 'Non ✗'} />
           </DataSection>
 
@@ -4912,54 +4984,41 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
             )}
             <DataRow label="Nom" value={viewedData.nom} />
             <DataRow label="Postnom" value={viewedData.postnom} />
-            <DataRow label="Prenom" value={viewedData.prenom || 'Non renseigné'} />
-            <DataRow label="Sexe" value={viewedData.sexe === 'M' ? 'Masculin' : 'Féminin'} />
-            <DataRow label="Date de naissance" value={viewedData.date_naissance} />
-            <DataRow label="Lieu de naissance" value={viewedData.lieu_naissance} />
-          </DataSection>
-
-          <DataSection title="Informations de Contact">
-            <DataRow label="Téléphone" value={viewedData.telephone} />
-            <DataRow label="Email" value={viewedData.email || 'Non renseigné'} />
+            <DataRow label="Prenom" value={viewedData.prenom} hideEmpty />
+            <DataRow label="Sexe" value={viewedData.sexe === 'M' ? 'Masculin' : viewedData.sexe === 'F' ? 'Féminin' : viewedData.sexe} hideEmpty />
+            <DataRow label="Date de naissance" value={viewedData.date_naissance} hideEmpty />
+            <DataRow label="Lieu de naissance" value={viewedData.lieu_naissance} hideEmpty />
           </DataSection>
 
           <DataSection title="Informations Administratives">
-            <DataRow label="Date d'engagement" value={viewedData.date_engagement} />
-            <DataRow label="Domaine de recherche" value={viewedData.domaine_recherche} />
-            <DataRow label="Établissement d'attache" value={viewedData.etablissement_attache} />
-            <DataRow label="Type d'établissement" value={viewedData.type_etablissement === 'Public' ? 'Établissement Public' : viewedData.type_etablissement === 'Privé' ? 'Établissement Privé' : viewedData.type_etablissement} />
+            <DataRow label="Date d'engagement" value={viewedData.date_engagement} hideEmpty />
+            <DataRow label="Domaine de recherche" value={viewedData.domaine_recherche} hideEmpty />
+            <DataRow label="Établissement d'attache" value={viewedData.etablissement_attache} hideEmpty />
+            <DataRow label="Type d'établissement" value={viewedData.type_etablissement === 'Public' ? 'Établissement Public' : viewedData.type_etablissement === 'Privé' ? 'Établissement Privé' : viewedData.type_etablissement} hideEmpty />
             {!isPrivateEtablissement(viewedData.type_etablissement) && (
-              <DataRow label="Prime institutionnelle" value={viewedData.prime_institutionnelle || 'Non renseigné'} />
+              <DataRow label="Prime institutionnelle" value={viewedData.prime_institutionnelle} hideEmpty />
             )}
           </DataSection>
 
-          <DataSection title="Inscriptions et Statut">
-            <DataRow label="Établissement inscription 3e cycle" value={viewedData.etablissement_inscription_3cycle} />
-            <DataRow label="Statut d'apprenant" value={viewedData.statut_apprenant} />
-            <DataRow label="Date d'inscription" value={viewedData.date_inscription || 'Non renseignée'} />
-          </DataSection>
+          {shouldShowThirdCycleInfo(viewedData) && (
+            <DataSection title="Inscriptions et Statut">
+              <DataRow label="Établissement inscription 3e cycle" value={viewedData.etablissement_inscription_3cycle} hideEmpty />
+              <DataRow label="Date d'inscription" value={viewedData.date_inscription} hideEmpty />
+              <DataRow label="Statut d'apprenant" value={viewedData.statut_apprenant} hideEmpty />
+            </DataSection>
+          )}
 
           <DataSection title="Documents">
-            <div className="data-row">
-              <span className="data-label">Arrêté de nomination:</span>
-              <span className="data-value"><FileLink path={viewedData.arrete_nomination} /></span>
-            </div>
-            <div className="data-row">
-              <span className="data-label">Photo passeport:</span>
-              <span className="data-value"><FileLink path={viewedData.photo_passeport} /></span>
-            </div>
-            <div className="data-row">
-              <span className="data-label">Décision d'inscription:</span>
-              <span className="data-value"><FileLink path={viewedData.decision_inscription} /></span>
-            </div>
-            <div className="data-row">
-              <span className="data-label">Charge horaire:</span>
-              <span className="data-value"><FileLink path={viewedData.charge_horaire} /></span>
-            </div>
+            <FileDataRow label="Arrêté de nomination" path={viewedData.arrete_nomination} />
+            <FileDataRow label="Photo passeport" path={viewedData.photo_passeport} />
+            {shouldShowThirdCycleInfo(viewedData) && (
+              <FileDataRow label="Décision d'inscription" path={viewedData.decision_inscription} />
+            )}
+            <FileDataRow label="Charge horaire" path={viewedData.charge_horaire} />
           </DataSection>
 
           <DataSection title="Confirmation">
-            <DataRow label="Commentaires" value={viewedData.commentaires || 'Aucun commentaire'} />
+            <DataRow label="Commentaires" value={viewedData.commentaires} hideEmpty />
             <DataRow label="Informations confirmées" value={viewedData.informations_vraies ? 'Oui ✓' : 'Non ✗'} />
           </DataSection>
 
@@ -4988,8 +5047,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
       sexe: viewedData.sexe || '',
       lieu_naissance: viewedData.lieu_naissance || '',
       date_naissance: viewedData.date_naissance || '',
-      telephone: viewedData.telephone || '',
-      email: viewedData.email || '',
       domaine_recherche: viewedData.domaine_recherche || '',
       prime_institutionnelle: viewedData.prime_institutionnelle || '',
       salaire_base: viewedData.salaire_base || '',
@@ -5164,8 +5221,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
         type_diplome: '',
         universite_attache: '',
         universite_attache_precisee: '',
-        email: '',
-        telephone: '',
         reference_dernier_arrete: '',
         prime_institutionnelle: '',
         salaire_base: '',
@@ -5246,7 +5301,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
     req('sexe', 'Sexe');
     req('lieu_naissance', 'Lieu de Naissance');
     req('date_naissance', 'Date de Naissance');
-    req('telephone', 'Téléphone');
     if (!formData.informations_vraies) {
       errors['informations_vraies'] = true;
       errorMessages.push("Confirmation des informations (case à cocher)");
@@ -5255,8 +5309,31 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
     if (['Assistant', 'CT', 'Professeur'].includes(formData.typecompte)) {
       reqDiplomaFile('has_diplome_etat', 'diplome_etat', "Copie du Diplôme d'État ou document équivalent");
       reqDiplomaFile('has_diplome_graduat', 'diplome_graduat', 'Copie du Diplôme de Graduat ou document équivalent');
-      reqDiplomaFile('has_diplome_licence', 'diplome_licence', 'Copie du Diplôme de Licence ou document équivalent');
-      reqDiplomaFile('has_diplome_master_dea_ds', 'diplome_master_dea_ds', 'Copie du Diplôme de Master / D.E.A / D.E.S ou document équivalent');
+      if (formData.typecompte === 'Professeur') {
+        reqDiplomaFile('has_diplome_licence', 'diplome_licence', 'Copie du Diplôme de Licence ou document équivalent');
+      } else {
+        req('has_diplome_licence', 'Diplôme de Licence / Médecine');
+        if (formData.has_diplome_licence === 'Oui') {
+          reqFile('diplome_licence', 'Copie du Diplôme de Licence ou document équivalent');
+        }
+      }
+      if (formData.typecompte === 'Professeur') {
+        reqDiplomaFile('has_diplome_master_dea_ds', 'diplome_master_dea_ds', 'Copie du Diplôme de Master / D.E.A / D.E.S ou document équivalent');
+      } else {
+        req('has_diplome_master_dea_ds', 'Diplôme Master / D.E.A / D.E.S ou document équivalent');
+        if (formData.has_diplome_master_dea_ds === 'Oui') {
+          reqFile('diplome_master_dea_ds', 'Copie du Diplôme de Master / D.E.A / D.E.S ou document équivalent');
+        }
+        if (formData.has_diplome_master_dea_ds === 'Non') {
+          req('has_inscription_dea_des', 'Êtes-vous inscrit au Master/D.E.A/D.E.S ?');
+          if (formData.has_inscription_dea_des === 'Oui') {
+            req('etablissement_inscription_3cycle', "Établissement d'Inscription au Troisième Cycle");
+            reqFile('decision_inscription_ass_ct', "Décision d'Inscription (D.E.A/D.E.S ou Doctorat/Thèse)");
+            req('date_inscription', "Date d'inscription au troisième cycle");
+            req('statut_apprenant', 'Statut Apprenant');
+          }
+        }
+      }
 
       if (formData.type_etablissement !== 'Privé') {
         req('salaire_base', 'Salaire de base');
@@ -5280,13 +5357,13 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
       // req('statut_apprenant', 'Statut Apprenant');
       // req('date_inscription', "Date d'Inscription");
       if (formData.has_diplome_master_dea_ds === 'Oui') {
+        req('type_diplome', 'Type de diplôme Master / D.E.A / D.E.S');
         req('universite_master_dea_ds', "Université d'obtention de votre master/D.E.A/D.E.S");
         req('pays_master_dea_ds', "Pays d'obtention de votre Master/D.E.A/D.E.S");
         req('date_obtention_master_dea_ds', "Date d'obtention de votre Master/D.E.A/D.E.S");
       }
       reqFile('photo_passeport', 'Photo Passeport');
       reqFile('decision_nomination_assistant', 'Décision de nomination comme assistant');
-      // reqFile('decision_inscription_ass_ct', "Décision d'Inscription");
     } else if (formData.typecompte === 'CT') {
       req('prenom', 'Prénom');
       req('date_soutenance', "Date d'Engagement");
@@ -5296,22 +5373,21 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
       if (formData.type_etablissement === 'Public') {
         req('matricule', 'Matricule');
       }
-      req('statut_apprenant', 'Statut Apprenant');
-      req('date_inscription', "Date d'Inscription");
       // req('type_diplome', 'Type de diplôme');
       reqFile('arrete_nomination_ct', 'Arrêté de nomination comme CT');
       if (formData.has_diplome_master_dea_ds === 'Oui') {
+        req('type_diplome', 'Type de diplôme Master / D.E.A / D.E.S');
         req('universite_master_dea_ds', "Université d'obtention de votre master/D.E.A/D.E.S");
         req('pays_master_dea_ds', "Pays d'obtention de votre Master/D.E.A/D.E.S");
         req('date_obtention_master_dea_ds', "Date d'obtention de votre Master/D.E.A/D.E.S");
       }
       reqFile('photo_passeport', 'Photo Passeport');
-      // req('statut_apprenant', 'Statut Apprenant');
-      // req('date_inscription', "Date d'Inscription");
-      // reqFile('decision_inscription_ass_ct', "Décision d'Inscription");
     } else {
       // Professeur — seuls les champs strictement requis par le serveur
       req('prenom', 'Prénom');
+      if (formData.has_diplome_master_dea_ds === 'Oui') {
+        req('type_diplome_dea_des', 'Type de diplôme Master / D.E.A / D.E.S');
+      }
     }
 
     return { errors, errorMessages };
@@ -5383,14 +5459,13 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
           sexe:                             formData.sexe,
           date_naissance:                   formData.date_naissance,
           lieu_naissance:                   formData.lieu_naissance,
-          telephone:                        formData.telephone,
           date_engagement:                  formData.date_soutenance,
           domaine_recherche:                formData.domaine_recherche,
           etablissement_attache:            etablissementAttache,
           mandat_assistant:                 formData.statut.split(' ')[0], // "Premier Mandat" -> "Premier", "Deuxième Mandat" -> "Deuxième"
-          etablissement_inscription_3cycle: formData.etablissement_inscription_3cycle,
-          statut_apprenant:                 formData.statut_apprenant,
-          date_inscription:                 formData.date_inscription,
+          etablissement_inscription_3cycle: shouldShowThirdCycleFields ? formData.etablissement_inscription_3cycle : '',
+          statut_apprenant:                 shouldShowThirdCycleFields ? formData.statut_apprenant : '',
+          date_inscription:                 shouldShowThirdCycleFields ? formData.date_inscription : '',
           type_etablissement:               formData.type_etablissement,
           prime_institutionnelle:           formData.type_etablissement === 'Privé' ? '' : formData.prime_institutionnelle,
           type_diplome:                     formData.type_diplome,
@@ -5398,7 +5473,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
           categorie_assistant:              formData.categorie_assistant,
           // Optionnels
           salaire_base:                     formData.type_etablissement === 'Privé' ? '' : formData.salaire_base,
-          email:                            formData.email,
           commentaires:                     formData.commentaire_confirmation,
           informations_vraies:              formData.informations_vraies,
           centre_laboratoire_recherche:     formData.centre_laboratoire_recherche,
@@ -5418,7 +5492,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
         // ── Fichiers API Assistant ──────────────────────────────────────────
         if (formData.photo_passeport)               submitData.append('photo_passeport',      formData.photo_passeport);
         if (formData.decision_nomination_assistant) submitData.append('decision_nomination',  formData.decision_nomination_assistant);
-        if (formData.decision_inscription_ass_ct)   submitData.append('decision_inscription', formData.decision_inscription_ass_ct);
+        if (shouldShowThirdCycleFields && formData.decision_inscription_ass_ct) submitData.append('decision_inscription', formData.decision_inscription_ass_ct);
         // Envoyer charge_horaire seulement pour Assistant Académique
         if (formData.charge_horaire && formData.categorie_assistant === 'Academique') submitData.append('charge_horaire', formData.charge_horaire);
         if (formData.diplome_etat)                  submitData.append('diplome_etat',          formData.diplome_etat);
@@ -5440,14 +5514,13 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
           sexe:                             formData.sexe,
           date_naissance:                   formData.date_naissance,
           lieu_naissance:                   formData.lieu_naissance,
-          telephone:                        formData.telephone,
           date_engagement:                  formData.date_soutenance,
           domaine_recherche:                formData.domaine_recherche,
           etablissement_attache:            etablissementAttache,
           type_etablissement:               formData.type_etablissement,
-          etablissement_inscription_3cycle: formData.etablissement_inscription_3cycle,
-          statut_apprenant:                 formData.statut_apprenant,
-          date_inscription:                 formData.date_inscription,
+          etablissement_inscription_3cycle: shouldShowThirdCycleFields ? formData.etablissement_inscription_3cycle : '',
+          statut_apprenant:                 shouldShowThirdCycleFields ? formData.statut_apprenant : '',
+          date_inscription:                 shouldShowThirdCycleFields ? formData.date_inscription : '',
           prime_institutionnelle:           formData.type_etablissement === 'Privé' ? '' : formData.prime_institutionnelle,
           salaire_base:                     formData.type_etablissement === 'Privé' ? '' : formData.salaire_base,
           type_diplome:                     formData.type_diplome,
@@ -5463,7 +5536,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
         // ── Matricule (saisi par l'utilisateur, sauf établissement privé) ──
         if (formData.type_etablissement !== 'Privé' && formData.matricule) submitData.append('matricule', formData.matricule);
 
-        if (formData.email)                       submitData.append('email',              formData.email);
         if (formData.commentaire_confirmation)    submitData.append('commentaires',       formData.commentaire_confirmation);
         if (formData.informations_vraies !== null && formData.informations_vraies !== undefined) {
           submitData.append('informations_vraies', formData.informations_vraies);
@@ -5472,7 +5544,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
         // ── Fichiers API Chef de Travaux ────────────────────────────────────
         if (formData.arrete_nomination_ct)        submitData.append('arrete_nomination',    formData.arrete_nomination_ct);
         if (formData.photo_passeport)             submitData.append('photo_passeport',      formData.photo_passeport);
-        if (formData.decision_inscription_ass_ct) submitData.append('decision_inscription', formData.decision_inscription_ass_ct);
+        if (shouldShowThirdCycleFields && formData.decision_inscription_ass_ct) submitData.append('decision_inscription', formData.decision_inscription_ass_ct);
         if (formData.charge_horaire)              submitData.append('charge_horaire',        formData.charge_horaire);
         if (formData.diplome_etat)                submitData.append('diplome_etat',          formData.diplome_etat);
         if (formData.diplome_graduat)             submitData.append('diplome_graduat',       formData.diplome_graduat);
@@ -5499,8 +5571,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
           type_diplome:               formData.type_diplome,
           universite_attache:         univAttache,
           date_engagement:            formData.date_engagement,
-          email:                      formData.email,
-          telephone:                  formData.telephone,
           reference_dernier_arrete:   formData.grade_actuel === 'DT' ? '' : formData.reference_dernier_arrete,
           prime_institutionnelle:     formData.type_etablissement === 'Privé' ? '' : formData.prime_institutionnelle,
           salaire_base:               formData.type_etablissement === 'Privé' ? '' : formData.salaire_base,
@@ -5592,8 +5662,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
           type_diplome: '',
           universite_attache: '',
           universite_attache_precisee: '',
-          email: '',
-          telephone: '',
           reference_dernier_arrete: '',
           prime_institutionnelle: '',
           salaire_base: '',
@@ -5730,6 +5798,68 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
       setLoading(false);
     }
   };
+
+  const shouldShowThirdCycleFields =
+    formData.has_diplome_master_dea_ds === 'Non' && formData.has_inscription_dea_des === 'Oui';
+
+  const renderThirdCycleFields = () => (
+    <>
+      <div className="form-group">
+        <label htmlFor="etablissement_inscription_3cycle">Établissement d'Inscription au Troisième Cycle <span className="required">*</span></label>
+        <input
+          type="text"
+          id="etablissement_inscription_3cycle"
+          name="etablissement_inscription_3cycle"
+          value={formData.etablissement_inscription_3cycle}
+          onChange={handleInputChange}
+          required
+        />
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="decision_inscription_ass_ct">Décision d'Inscription (D.E.A/D.E.S ou Doctorat/Thèse) <span className="required">*</span></label>
+        <small className="file-hint">{ALLOWED_FILE_LABEL}</small>
+        <input
+          type="file"
+          id="decision_inscription_ass_ct"
+          name="decision_inscription_ass_ct"
+          accept={ALLOWED_FILE_ACCEPT}
+          onChange={handleFileChange}
+          required={!formData.decision_inscription_ass_ct}
+        />
+        {formData.decision_inscription_ass_ct && (
+          <small className="file-info">✅ Fichier sélectionné: {formData.decision_inscription_ass_ct.name}</small>
+        )}
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="date_inscription">Date d'inscription au troisième cycle <span className="required">*</span></label>
+        <input
+          type="date"
+          id="date_inscription"
+          name="date_inscription"
+          value={formData.date_inscription}
+          onChange={handleInputChange}
+          required
+        />
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="statut_apprenant">Statut Apprenant <span className="required">*</span></label>
+        <select
+          id="statut_apprenant"
+          name="statut_apprenant"
+          value={formData.statut_apprenant}
+          onChange={handleInputChange}
+          required
+        >
+          <option value="">-- Sélectionner --</option>
+          <option value="DEA/DES">D.E.A/D.E.S</option>
+          <option value="Doctorat">Doctorat</option>
+        </select>
+      </div>
+    </>
+  );
 
   return (
     <div className="professor-registration-form">
@@ -5976,20 +6106,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
             </div>
 
             <div className="form-group">
-              <label htmlFor="telephone">Téléphone <span className="required">*</span></label>
-              <input
-                type="tel"
-                id="telephone"
-                name="telephone"
-                value={formData.telephone}
-                onChange={handleInputChange}
-                pattern="[0-9+]*"
-                inputMode="numeric"
-                required
-              />
-            </div>
-
-            <div className="form-group">
               <label htmlFor="date_soutenance">Date d'Engagement <span className="required">*</span></label>
               <input
                 type="date"
@@ -6000,7 +6116,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
                 required
               />
             </div>
-
             <div className="form-group">
               <label htmlFor="domaine_recherche">Domaine de Recherche <span className="required">*</span></label>
               <input
@@ -6143,56 +6258,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
               )}
             </div>
 
-            <div className="form-group">
-              <label htmlFor="etablissement_inscription_3cycle">Établissement d'Inscription au Troisième Cycle</label>
-              <input
-                type="text"
-                id="etablissement_inscription_3cycle"
-                name="etablissement_inscription_3cycle"
-                value={formData.etablissement_inscription_3cycle}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="decision_inscription_ass_ct">Décision d'Inscription (D.E.A/D.E.S ou Doctorat/Thèse) <span className="optional">(optionnel)</span></label>
-              <small className="file-hint">{ALLOWED_FILE_LABEL}</small>
-              <input
-                type="file"
-                id="decision_inscription_ass_ct"
-                name="decision_inscription_ass_ct"
-                accept={ALLOWED_FILE_ACCEPT}
-                onChange={handleFileChange}
-              />
-              {formData.decision_inscription_ass_ct && (
-                <small className="file-info">✅ Fichier sélectionné: {formData.decision_inscription_ass_ct.name}</small>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="date_inscription">Date d'inscription au troisième cycle <span className="optional">(optionnel)</span></label>
-              <input
-                type="date"
-                id="date_inscription"
-                name="date_inscription"
-                value={formData.date_inscription}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="statut_apprenant">Statut Apprenant <span className="optional">(optionnel)</span></label>
-              <select
-                id="statut_apprenant"
-                name="statut_apprenant"
-                value={formData.statut_apprenant}
-                onChange={handleInputChange}
-              >
-                <option value="">-- Sélectionner --</option>
-                <option value="DEA/DES">D.E.A/D.E.S</option>
-                <option value="Doctorat">Doctorat</option>
-              </select>
-            </div>
           </fieldset>
         )}
 
@@ -6254,7 +6319,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
               {formData.diplome_licence && <small className="file-info">✅ Fichier sélectionné: {formData.diplome_licence.name}</small>}
             </div>
           )}
-
           {/* Diplôme Master / D.E.A / D.E.S */}
           <div className="form-group">
             <label htmlFor="has_diplome_master_ass">Avez-vous un Diplôme Master / D.E.A / D.E.S  ou Document équivalent ? <span className="required">*</span></label>
@@ -6264,15 +6328,33 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
               <option value="Non">Non</option>
             </select>
           </div>
+          {formData.has_diplome_master_dea_ds === 'Non' && (
+            <div className="form-group">
+              <label htmlFor="has_inscription_dea_des_ass">Êtes-vous inscrit au Master/D.E.A/D.E.S ? <span className="required">*</span></label>
+              <select
+                id="has_inscription_dea_des_ass"
+                name="has_inscription_dea_des"
+                value={formData.has_inscription_dea_des}
+                onChange={handleInputChange}
+                required
+              >
+                <option value="">-- Sélectionner --</option>
+                <option value="Oui">Oui</option>
+                <option value="Non">Non</option>
+              </select>
+            </div>
+          )}
+          {shouldShowThirdCycleFields && renderThirdCycleFields()}
           {formData.has_diplome_master_dea_ds === 'Oui' && (
             <>
               <div className="form-group">
-                <label htmlFor="type_diplome_ass">Type de diplôme Master / D.E.A / D.E.S <span className="optional">(optionnel)</span></label>
+                <label htmlFor="type_diplome_ass">Type de diplôme Master / D.E.A / D.E.S <span className="required">*</span></label>
                 <select
                   id="type_diplome_ass"
                   name="type_diplome"
                   value={formData.type_diplome}
                   onChange={handleInputChange}
+                  required
                 >
                   <option value="">-- Sélectionner --</option>
                   <option value="Academique">Académique</option>
@@ -6330,24 +6412,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
               {formData.charge_horaire && (
                 <small className="file-info">✅ Fichier sélectionné: {formData.charge_horaire.name}</small>
               )}
-            </div>
-          </fieldset>
-        )}
-
-        {/* Section Informations de Contact for Assistant */}
-        {formData.typecompte === 'Assistant' && (
-          <fieldset>
-            <legend><FaPhone /> Informations de Contact</legend>
-
-            <div className="form-group">
-              <label htmlFor="email">Email <span className="optional">(optionnel)</span></label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-              />
             </div>
           </fieldset>
         )}
@@ -6436,20 +6500,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
                   required
                 />
               </div>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="telephone">Téléphone <span className="required">*</span></label>
-              <input
-                type="tel"
-                id="telephone"
-                name="telephone"
-                value={formData.telephone}
-                onChange={handleInputChange}
-                pattern="[0-9+]*"
-                inputMode="numeric"
-                required
-              />
             </div>
 
             <div className="form-group">
@@ -6559,56 +6609,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="etablissement_inscription_3cycle">Établissement d'Inscription au Troisième Cycle</label>
-              <input
-                type="text"
-                id="etablissement_inscription_3cycle"
-                name="etablissement_inscription_3cycle"
-                value={formData.etablissement_inscription_3cycle}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="decision_inscription_ass_ct">Décision d'Inscription (D.E.A/D.E.S ou Doctorat/Thèse) <span className="optional">(optionnel)</span></label>
-              <small className="file-hint">{ALLOWED_FILE_LABEL}</small>
-              <input
-                type="file"
-                id="decision_inscription_ass_ct"
-                name="decision_inscription_ass_ct"
-                accept={ALLOWED_FILE_ACCEPT}
-                onChange={handleFileChange}
-              />
-              {formData.decision_inscription_ass_ct && (
-                <small className="file-info">✅ Fichier sélectionné: {formData.decision_inscription_ass_ct.name}</small>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="date_inscription">Date d'inscription au troisième cycle <span className="optional">(optionnel)</span></label>
-              <input
-                type="date"
-                id="date_inscription"
-                name="date_inscription"
-                value={formData.date_inscription}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="statut_apprenant">Statut Apprenant <span className="optional">(optionnel)</span></label>
-              <select
-                id="statut_apprenant"
-                name="statut_apprenant"
-                value={formData.statut_apprenant}
-                onChange={handleInputChange}
-              >
-                <option value="">-- Sélectionner --</option>
-                <option value="DEA/DES">D.E.A/D.E.S</option>
-                <option value="Doctorat">Doctorat</option>
-              </select>
-            </div>
           </fieldset>
         )}
 
@@ -6670,7 +6670,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
               {formData.diplome_licence && <small className="file-info">✅ Fichier sélectionné: {formData.diplome_licence.name}</small>}
             </div>
           )}
-
           {/* Diplôme Master / D.E.A / D.E.S */}
           <div className="form-group">
             <label htmlFor="has_diplome_master_ct">Avez-vous un Diplôme Master / D.E.A / D.E.S ou Document équivalent ? <span className="required">*</span></label>
@@ -6680,15 +6679,33 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
               <option value="Non">Non</option>
             </select>
           </div>
+          {formData.has_diplome_master_dea_ds === 'Non' && (
+            <div className="form-group">
+              <label htmlFor="has_inscription_dea_des_ct">Êtes-vous inscrit au Master/D.E.A/D.E.S ? <span className="required">*</span></label>
+              <select
+                id="has_inscription_dea_des_ct"
+                name="has_inscription_dea_des"
+                value={formData.has_inscription_dea_des}
+                onChange={handleInputChange}
+                required
+              >
+                <option value="">-- Sélectionner --</option>
+                <option value="Oui">Oui</option>
+                <option value="Non">Non</option>
+              </select>
+            </div>
+          )}
+          {shouldShowThirdCycleFields && renderThirdCycleFields()}
           {formData.has_diplome_master_dea_ds === 'Oui' && (
             <>
               <div className="form-group">
-                <label htmlFor="type_diplome_ct">Type de diplôme Master / D.E.A / D.E.S <span className="optional">(optionnel)</span></label>
+                <label htmlFor="type_diplome_ct">Type de diplôme Master / D.E.A / D.E.S <span className="required">*</span></label>
                 <select
                   id="type_diplome_ct"
                   name="type_diplome"
                   value={formData.type_diplome}
                   onChange={handleInputChange}
+                  required
                 >
                   <option value="">-- Sélectionner --</option>
                   <option value="Academique">Académique</option>
@@ -6742,23 +6759,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
             )}
           </div>
         </fieldset>
-        )}
-
-        {/* Section Informations de Contact for CT */}
-        {formData.typecompte === 'CT' && (
-          <fieldset>
-            <legend><FaPhone /> Informations de Contact</legend>
-            <div className="form-group">
-              <label htmlFor="email">Email <span className="optional">(optionnel)</span></label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-              />
-            </div>
-          </fieldset>
         )}
 
         {/* Section Informations Personnelles (only for Professeur) */}
@@ -6845,41 +6845,12 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="telephone">Téléphone <span className="required">*</span></label>
-            <input
-              type="tel"
-              id="telephone"
-              name="telephone"
-              value={formData.telephone}
-              onChange={handleInputChange}
-              pattern="[0-9+]*"
-              inputMode="numeric"
-              required
-            />
-          </div>
         </fieldset>
         )}
 
         {/* All other sections for Professeur only */}
         {formData.typecompte === 'Professeur' && (
         <>
-        {/* Section Informations de Contact */}
-        <fieldset>
-          <legend><FaPhone /> Informations de Contact</legend>
-
-          <div className="form-group">
-            <label htmlFor="email">Email <span className="optional">(optionnel)</span></label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-            />
-          </div>
-        </fieldset>
-
         {/* Section Informations Administratives */}
         <fieldset>
           <legend><FaGraduationCap /> Informations Administratives</legend>
@@ -7172,12 +7143,13 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
           {formData.has_diplome_master_dea_ds === 'Oui' && (
             <>
               <div className="form-group">
-                <label htmlFor="type_diplome_dea_des">Type de diplôme Master / D.E.A / D.E.S <span className="optional">(optionnel)</span></label>
+                <label htmlFor="type_diplome_dea_des">Type de diplôme Master / D.E.A / D.E.S <span className="required">*</span></label>
                 <select
                   id="type_diplome_dea_des"
                   name="type_diplome_dea_des"
                   value={formData.type_diplome_dea_des || ''}
                   onChange={handleInputChange}
+                  required
                 >
                   <option value="">-- Sélectionner --</option>
                   <option value="Academique">Académique</option>

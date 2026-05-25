@@ -81,11 +81,6 @@ const SignupForm = ({ onSignupSuccess, onBackToLogin }) => {
       return;
     }
 
-    if (!formData.telephone.startsWith('+243')) {
-      showPopup('Le numéro de téléphone doit commencer par +243', 'error');
-      return;
-    }
-
     if (!formData.type_de_compte) {
       showPopup('Veuillez sélectionner votre type de compte', 'error');
       return;
@@ -293,9 +288,7 @@ const SignupForm = ({ onSignupSuccess, onBackToLogin }) => {
                 name="telephone"
                 value={formData.telephone}
                 onChange={handleInputChange}
-                placeholder="+243123456789"
-                pattern="[0-9+]*"
-                inputMode="numeric"
+                placeholder="Votre numéro de téléphone"
                 required
                 disabled={loading}
               />

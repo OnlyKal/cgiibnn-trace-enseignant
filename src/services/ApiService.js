@@ -149,18 +149,18 @@ class ApiService {
    * POST /api/enseignants/assistant/add/ — multipart/form-data
    *
    * Champs texte : matricule, nom, postnom, sexe, date_naissance, lieu_naissance,
-   *   telephone, date_engagement, domaine_recherche, etablissement_attache,
+   *   date_engagement, domaine_recherche, etablissement_attache,
    *   mandat_assistant, etablissement_inscription_3cycle, statut_apprenant,
-   *   date_inscription, email, commentaires, informations_vraies
+   *   date_inscription, commentaires, informations_vraies
    *   Fichiers     : diplome_master_dea_ds, photo_passeport, decision_nomination,
    *   decision_inscription
    **/
   async addAssistant(data) {
     const TEXT_FIELDS = [
       'matricule', 'nom', 'postnom', 'sexe', 'date_naissance', 'lieu_naissance',
-      'telephone', 'date_engagement', 'domaine_recherche', 'etablissement_attache',
+      'date_engagement', 'domaine_recherche', 'etablissement_attache',
       'mandat_assistant', 'etablissement_inscription_3cycle', 'statut_apprenant',
-      'date_inscription', 'prime_institutionnelle', 'email', 'commentaires', 'informations_vraies',
+      'date_inscription', 'prime_institutionnelle', 'commentaires', 'informations_vraies',
       'type_diplome',
     ];
 
@@ -189,8 +189,8 @@ class ApiService {
   /**
    * Enregistrer un Chef de Travaux
    * POST /api/enseignants/chef-travaux/add/ — multipart/form-data
-   * Champs texte : matricule, email, nom, postnom, prenom, sexe, date_naissance,
-   *   lieu_naissance, telephone, date_engagement, domaine_recherche,
+   * Champs texte : matricule, nom, postnom, prenom, sexe, date_naissance,
+   *   lieu_naissance, date_engagement, domaine_recherche,
    *   etablissement_attache, type_etablissement, etablissement_inscription_3cycle,
    *   statut_apprenant, date_inscription
    * Optionnels   : commentaires, informations_vraies
@@ -199,8 +199,8 @@ class ApiService {
    */
   async addChefTravaux(data) {
     const TEXT_FIELDS = [
-      'matricule', 'email', 'nom', 'postnom', 'prenom', 'sexe',
-      'date_naissance', 'lieu_naissance', 'telephone', 'date_engagement',
+      'matricule', 'nom', 'postnom', 'prenom', 'sexe',
+      'date_naissance', 'lieu_naissance', 'date_engagement',
       'domaine_recherche', 'etablissement_attache', 'type_etablissement',
       'etablissement_inscription_3cycle', 'statut_apprenant', 'date_inscription',
       'prime_institutionnelle', 'commentaires', 'informations_vraies',
@@ -241,7 +241,7 @@ class ApiService {
       'lieu_naissance', 'date_naissance', 'grade_actuel', 'pays_soutenance',
       'universite_soutenance', 'numero_arrete_equivalence', 'date_soutenance',
       'date_engagement',
-      'type_diplome', 'universite_attache', 'email', 'telephone',
+      'type_diplome', 'universite_attache',
       'reference_dernier_arrete', 'prime_institutionnelle', 'salaire_base',
       'possede_diplome', 'domaine_recherche', 'sujet_these',
       'universite_obtention_diplome_doctorat', 'pays_obtention_diplome_doctorat', 'date_obtention_diplome_doctorat',
@@ -295,9 +295,9 @@ class ApiService {
   async updateAssistant(id, data) {
     const TEXT_FIELDS = [
       'matricule', 'nom', 'postnom', 'sexe', 'date_naissance', 'lieu_naissance',
-      'telephone', 'date_engagement', 'domaine_recherche', 'etablissement_attache',
+      'date_engagement', 'domaine_recherche', 'etablissement_attache',
       'mandat_assistant', 'etablissement_inscription_3cycle', 'statut_apprenant',
-      'date_inscription', 'prime_institutionnelle', 'email', 'commentaires', 'informations_vraies',
+      'date_inscription', 'prime_institutionnelle', 'commentaires', 'informations_vraies',
       'type_diplome',
     ];
 
@@ -339,8 +339,8 @@ class ApiService {
    */
   async updateChefTravaux(id, data) {
     const TEXT_FIELDS = [
-      'matricule', 'email', 'nom', 'postnom', 'prenom', 'sexe',
-      'date_naissance', 'lieu_naissance', 'telephone', 'date_engagement',
+      'matricule', 'nom', 'postnom', 'prenom', 'sexe',
+      'date_naissance', 'lieu_naissance', 'date_engagement',
       'domaine_recherche', 'etablissement_attache', 'type_etablissement',
       'etablissement_inscription_3cycle', 'statut_apprenant', 'date_inscription',
       'prime_institutionnelle', 'commentaires', 'informations_vraies',
