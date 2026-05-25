@@ -4081,6 +4081,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
     universite_obtention_diplome_doctorat: '',
     pays_obtention_diplome_doctorat: '',
     date_obtention_diplome_doctorat: '',
+    a_etudie_etranger: '',
     commentaire_confirmation: '',
     informations_vraies: false,
     diplome_etat: null,
@@ -4186,6 +4187,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
         universite_master_dea_ds: d.universite_master_dea_ds || '',
         pays_master_dea_ds: d.pays_master_dea_ds || '',
         date_obtention_master_dea_ds: d.date_obtention_master_dea_ds || '',
+        a_etudie_etranger: d.a_etudie_etranger || '',
         // Professeur
         type_etablissement: d.type_etablissement || '',
         matricule_esu: d.matricule_esu || '',
@@ -4888,6 +4890,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
             <DataRow label="Université d'obtention de votre master/D.E.A/D.E.S" value={viewedData.universite_master_dea_ds} />
             <DataRow label="Pays d'obtention de votre Master/D.E.A/D.E.S" value={viewedData.pays_master_dea_ds} />
             <DataRow label="Date d'obtention de votre Master/D.E.A/D.E.S" value={viewedData.date_obtention_master_dea_ds} />
+            <DataRow label="A étudié à l'étranger" value={viewedData.a_etudie_etranger} hideEmpty />
             <DataRow label="Université d'obtention de votre Doctorat" value={viewedData.universite_obtention_diplome_doctorat} />
             <DataRow label="Pays d'obtention de votre Doctorat" value={viewedData.pays_obtention_diplome_doctorat} />
             <DataRow label="Date d'obtention de votre Doctorat" value={viewedData.date_obtention_diplome_doctorat} />
@@ -5247,6 +5250,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
         universite_obtention_diplome_doctorat: '',
         pays_obtention_diplome_doctorat: '',
         date_obtention_diplome_doctorat: '',
+        a_etudie_etranger: '',
       });
     } catch (error) {
       let errorMsg = 'Erreur lors de la modification';
@@ -5385,6 +5389,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
     } else {
       // Professeur — seuls les champs strictement requis par le serveur
       req('prenom', 'Prénom');
+      req('a_etudie_etranger', "Avez-vous étudié à l'étranger ?");
       if (formData.has_diplome_master_dea_ds === 'Oui') {
         req('type_diplome_dea_des', 'Type de diplôme Master / D.E.A / D.E.S');
       }
@@ -5580,6 +5585,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
           universite_obtention_diplome_doctorat: formData.universite_obtention_diplome_doctorat,
           pays_obtention_diplome_doctorat:       formData.pays_obtention_diplome_doctorat,
           date_obtention_diplome_doctorat:       formData.date_obtention_diplome_doctorat,
+          a_etudie_etranger:              formData.a_etudie_etranger,
           commentaire_confirmation:        formData.commentaire_confirmation,
           informations_vraies:             formData.informations_vraies,
           universite_master_dea_ds:        formData.universite_master_dea_ds,
@@ -7215,6 +7221,21 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
               id="possede_diplome"
               name="possede_diplome"
               value={formData.possede_diplome}
+              onChange={handleInputChange}
+              required
+            >
+              <option value="">-- Sélectionner --</option>
+              <option value="Oui">Oui</option>
+              <option value="Non">Non</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="a_etudie_etranger">Avez-vous étudié à l'étranger ? <span className="required">*</span></label>
+            <select
+              id="a_etudie_etranger"
+              name="a_etudie_etranger"
+              value={formData.a_etudie_etranger}
               onChange={handleInputChange}
               required
             >

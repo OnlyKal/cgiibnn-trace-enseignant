@@ -245,6 +245,7 @@ class ApiService {
       'reference_dernier_arrete', 'prime_institutionnelle', 'salaire_base',
       'possede_diplome', 'domaine_recherche', 'sujet_these',
       'universite_obtention_diplome_doctorat', 'pays_obtention_diplome_doctorat', 'date_obtention_diplome_doctorat',
+      'a_etudie_etranger',
       'commentaire_confirmation', 'informations_vraies',
       'universite_master_dea_ds', 'pays_master_dea_ds',
       'date_obtention_master_dea_ds', 'type_diplome_dea_des',

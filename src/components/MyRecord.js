@@ -165,6 +165,7 @@ const ProfesseurData = ({ d }) => (
       <DataRow label="Université d'obtention de votre master/D.E.A/D.E.S" value={d.universite_master_dea_ds} />
       <DataRow label="Pays d'obtention de votre Master/D.E.A/D.E.S" value={d.pays_master_dea_ds} />
       <DataRow label="Date d'obtention de votre Master/D.E.A/D.E.S" value={d.date_obtention_master_dea_ds} />
+      <DataRow label="A étudié à l'étranger" value={d.a_etudie_etranger} hideEmpty />
       <DataRow label="Sujet de thèse" value={d.sujet_these} />
       {d.universite_obtention_diplome_doctorat && <DataRow label="Université d'obtention de votre Doctorat" value={d.universite_obtention_diplome_doctorat} />}
       {d.pays_obtention_diplome_doctorat && <DataRow label="Pays d'obtention de votre Doctorat" value={d.pays_obtention_diplome_doctorat} />}
