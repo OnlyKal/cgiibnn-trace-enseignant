@@ -86,27 +86,37 @@ const normalizeAccountType = (value = '') => {
    Sub-components
 ───────────────────────────────────────────────────────────── */
 
-const isEmptyDisplayValue = (value) => (
-  value === null ||
-  value === undefined ||
-  value === '' ||
-  value === 'Non renseigné' ||
-  value === 'Non fourni'
-);
+const isEmptyDisplayValue = (value) => {
+  if (value === null || value === undefined) return true;
+  if (typeof value !== 'string') return false;
 
-const DataRow = ({ label, value, hideEmpty = false }) => {
+  const normalized = value.trim().toLowerCase();
+  return (
+    normalized === '' ||
+    normalized === 'non renseigné' ||
+    normalized === 'non renseigne' ||
+    normalized === 'non fourni' ||
+    normalized === 'aucun commentaire' ||
+    normalized === 'null' ||
+    normalized === 'undefined' ||
+    normalized === 'n/a' ||
+    normalized === 'na'
+  );
+};
+
+const DataRow = ({ label, value, hideEmpty = true }) => {
   if (hideEmpty && isEmptyDisplayValue(value)) return null;
 
   return (
     <div className="mr-data-row">
       <span className="mr-data-label">{label}</span>
-      <span className="mr-data-value">{value || <em className="mr-empty">Non renseigné</em>}</span>
+      <span className="mr-data-value">{value}</span>
     </div>
   );
 };
 
 const FileLink = ({ path }) => {
-  if (!path) return <em className="mr-empty">Non fourni</em>;
+  if (isEmptyDisplayValue(path)) return null;
   const fileName = path.split('/').pop();
   const fullUrl = path.startsWith('http') ? path : `${SERVER_URL}${path}`;
   return (
@@ -158,7 +168,7 @@ const ProfesseurData = ({ d }) => (
     </Section>
 
     <Section title="Soutenance & Diplôme">
-      {d.type_diplome && <DataRow label="Type de diplôme de Doctorat" value={d.type_diplome} />}
+      <DataRow label="Type de diplôme de Doctorat" value={d.type_diplome} />
       <DataRow label="Possède diplôme" value={d.possede_diplome} />
       <DataRow label="Numéro arrêté équivalence" value={d.numero_arrete_equivalence} />
       <DataRow label="Type de diplôme Master / D.E.A / D.E.S" value={d.type_diplome_dea_des} hideEmpty />
@@ -172,21 +182,23 @@ const ProfesseurData = ({ d }) => (
       {d.date_obtention_diplome_doctorat && <DataRow label="Date d'obtention de votre Doctorat" value={d.date_obtention_diplome_doctorat} />}
     </Section>
 
-    <Section title="Commentaires & Confirmation">
-      <DataRow label="Commentaire" value={d.commentaire_confirmation || d.commentaires} />
-    </Section>
+    {!isEmptyDisplayValue(d.commentaire_confirmation || d.commentaires) && (
+      <Section title="Commentaires & Confirmation">
+        <DataRow label="Commentaire" value={d.commentaire_confirmation || d.commentaires} />
+      </Section>
+    )}
 
     <Section title="Documents">
-      <DataRow label="Photo identité" value={<FileLink path={d.photo_identite} />} />
+      <FileRow label="Photo identité" path={d.photo_identite} />
       {/* <DataRow label="Copie diplôme" value={<FileLink path={d.copie_diplome} />} /> */}
       {/* <DataRow label="Copie arrêté équivalence" value={<FileLink path={d.copie_arrete_equivalence} />} /> */}
-      {!d.copie_diplome && <DataRow label="Documents équivalents" value={<FileLink path={d.documents_equivalents} />} />}
-      <DataRow label="Charge horaire" value={<FileLink path={d.charge_horaire} />} />
-      <DataRow label="Diplôme d'État" value={<FileLink path={d.diplome_etat} />} />
-      <DataRow label="Diplôme de Graduat" value={<FileLink path={d.diplome_graduat} />} />
-      <DataRow label="Diplôme de Licence" value={<FileLink path={d.diplome_licence} />} />
-      <DataRow label="Diplôme Master/D.E.A/D.E.S" value={<FileLink path={d.diplome_master_dea_ds} />} />
-      <DataRow label="Diplôme de Doctorat" value={<FileLink path={d.copie_diplome} />} />
+      {isEmptyDisplayValue(d.copie_diplome) && <FileRow label="Documents équivalents" path={d.documents_equivalents} />}
+      <FileRow label="Charge horaire" path={d.charge_horaire} />
+      <FileRow label="Diplôme d'État" path={d.diplome_etat} />
+      <FileRow label="Diplôme de Graduat" path={d.diplome_graduat} />
+      <FileRow label="Diplôme de Licence" path={d.diplome_licence} />
+      <FileRow label="Diplôme Master/D.E.A/D.E.S" path={d.diplome_master_dea_ds} />
+      <FileRow label="Diplôme de Doctorat" path={d.copie_diplome} />
     </Section>
 
   </>
