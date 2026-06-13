@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { API_BASE_URL, SERVER_URL } from '../config';
 import AuthService from '../services/AuthService';
 import '../styles/ProfessorRegistrationForm.css';
-import { FaUser, FaGraduationCap, FaFileAlt, FaCheckCircle, FaEye, FaSignOutAlt, FaArrowLeft } from 'react-icons/fa';
+import { FaUser, FaGraduationCap, FaFileAlt, FaCheckCircle, FaEye, FaSignOutAlt, FaArrowLeft, FaComments } from 'react-icons/fa';
 import LoadingModal from './LoadingModal';
 import UserInfo from './UserInfo';
 import ProfileSidebar from './ProfileSidebar';
@@ -11,9 +11,76 @@ import { COUNTRIES } from '../data/countries';
 
 // Configuration du système de brouillon
 const DRAFT_KEY = 'localstorageDraft';
+const MIGRATED_MATRICULE_KEY = 'migrated-matricule';
 const DRAFT_SAVE_DELAY = 1000; // 1 seconde de debounce
 
 const isPrivateEtablissement = (value) => value === 'Privé' || value === 'Établissement Privé';
+
+const MESSAGING_ALLOWED_TYPES = ['Assistant', 'Chef de Travaux', 'Professeur'];
+
+const normalizeAccountType = (value = '') => {
+  const normalized = String(value).trim().toLowerCase();
+  if (normalized.includes('assistant')) return 'Assistant';
+  if (normalized === 'ct' || normalized.includes('chef')) return 'Chef de Travaux';
+  if (normalized.includes('professeur')) return 'Professeur';
+  return value;
+};
+
+const asArray = (payload, keys = []) => {
+  if (Array.isArray(payload)) return payload;
+  for (const key of keys) {
+    if (Array.isArray(payload?.[key])) return payload[key];
+  }
+  if (Array.isArray(payload?.results)) return payload.results;
+  return [];
+};
+
+const isOwnMessage = (message, compteId) => {
+  const source = message || {};
+  const possibleSenderId = (
+    source.expediteur_id || source.sender_id || source.auteur_id ||
+    source.compte_id || source.current_compte_id || source.expediteur?.id ||
+    source.sender?.id || source.auteur?.id
+  );
+
+  return possibleSenderId && compteId && String(possibleSenderId) === String(compteId);
+};
+
+const getUnreadConversationCount = (conversation, currentCompteId) => {
+  const source = conversation || {};
+  const numericCount = (
+    source.unread_count ??
+    source.unread_messages_count ??
+    source.messages_non_lus ??
+    source.non_lus ??
+    source.nombre_non_lus ??
+    source.nouveaux_messages ??
+    source.nb_nouveaux_messages ??
+    source.unread
+  );
+
+  if (Number(numericCount) > 0) return Number(numericCount);
+
+  if (source.has_unread || source.a_des_messages_non_lus || source.nouveau_message || source.has_new_message) {
+    return 1;
+  }
+
+  const lastMessage = source.dernier_message || source.last_message || source.latest_message;
+  const lastMessageStatus = String(lastMessage?.statut || lastMessage?.status || lastMessage?.etat || '').toLowerCase();
+  const lastMessageRead = (
+    lastMessage?.lu ||
+    lastMessage?.is_read ||
+    lastMessage?.read ||
+    lastMessageStatus.includes('lu') ||
+    lastMessageStatus.includes('read')
+  );
+
+  if (lastMessage && !isOwnMessage(lastMessage, currentCompteId) && !lastMessageRead) {
+    return 1;
+  }
+
+  return 0;
+};
 
 const formatGradeActuel = (grade) => {
   const gradeLabels = {
@@ -747,7 +814,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISP-ARU",
-    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE DÂ’ARU",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE DE’ARU",
     "type_etablissment": "Public"
   },
   {
@@ -1152,7 +1219,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISP-SUD BANGA",
-    "name": "INSTITUT SUPERIEUR PÃ‰DAGOGIQUE DU SUD-BANGA",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE DU SUD-BANGA",
     "type_etablissment": "Public"
   },
   {
@@ -1262,7 +1329,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISIC",
-    "name": "Institut Supérieur d'Informatique CHAMINADE",
+    "name": "INSTITUT SUPÉRIEUR D'INFORMATIQUE CHAMINADE",
     "type_etablissment": "Privé"
   },
   {
@@ -1277,42 +1344,42 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISTA-BUKAVU",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÃ‰ES DE BUKAVU",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUEES DE BUKAVU",
     "type_etablissment": "Public"
   },
   {
     "code": "ISTA-DOMIONGO",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÃ‰ES DE DOMIONGO",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÉES DE DOMIONGO",
     "type_etablissment": "Public"
   },
   {
     "code": "ISTA-EBONDA",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÃ‰ES D'EBONDA",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÉES D'EBONDA",
     "type_etablissment": "Public"
   },
   {
     "code": "ISTA-GOMA",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÃ‰ES DE GOMA",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÉES DE GOMA",
     "type_etablissment": "Public"
   },
   {
     "code": "ISTA-KASANGULU",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÃ‰ES DE KASANGULU",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÉES DE KASANGULU",
     "type_etablissment": "Public"
   },
   {
     "code": "ISTA-KINDU",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÃ‰ES DE KINDU",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÉES DE KINDU",
     "type_etablissment": "Public"
   },
   {
     "code": "ISTA-LUBUMBASHI",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÃ‰ES DE LUBUMBASHI",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÉES DE LUBUMBASHI",
     "type_etablissment": "Public"
   },
   {
     "code": "ISTA-LUKULA",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÃ‰ES DE LUKULA A BOMA",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÉES DE LUKULA A BOMA",
     "type_etablissment": "Public"
   },
   {
@@ -1322,12 +1389,12 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISTA-NDOLUMA",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÃ‰ES DE NDOLUMA A LUBERO",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÉES DE NDOLUMA A LUBERO",
     "type_etablissment": "Public"
   },
   {
     "code": "ISTA-KOLWEZI",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÃ‰ES DE KOLWEZI",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÉES DE KOLWEZI",
     "type_etablissment": "Public"
   },
   {
@@ -1628,6 +1695,11 @@ const UNIVERSITIES = [
   {
     "code": "ISTM-YANGAMBI",
     "name": "INSTITUT SUPERIEUR DES TECHNIQUES MEDICALES DE YANGAMBI",
+    "type_etablissment": "Public"
+  },
+  {
+    "code": "ISPT-YANGAMBI",
+    "name": "INSTITUT SUPÉRIEUR PÉDAGOGIQUE ET TECHNIQUE DE YANGAMBI",
     "type_etablissment": "Public"
   },
   {
@@ -2012,12 +2084,12 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISTHEMBU",
-    "name": "INSTITUT SUPERIEUR DE THÃ‰OLOGIE EVANGÃ‰LIQUE DE MBUJI-MAYI",
+    "name": "INSTITUT SUPERIEUR DE THEOLOGIE EVANGELIQUE DE MBUJI-MAYI",
     "type_etablissment": "Privé"
   },
   {
     "code": "ISSTA",
-    "name": "INSTITUT SUPERIEUR DES SCIENCES ET TECHNIQUES APPLIQUÃ‰ES DE MBUJI-MAYI",
+    "name": "INSTITUT SUPERIEUR DES SCIENCES ET TECHNIQUES APPLIQUÉES DE MBUJI-MAYI",
     "type_etablissment": "Privé"
   },
   {
@@ -2032,12 +2104,12 @@ const UNIVERSITIES = [
   },
   {
     "code": "UEMA DE BUTEMBO",
-    "name": "UNIVERSITE EVANGÃ‰LIQUE DE LA MISSION EN AFRIQUE",
+    "name": "UNIVERSITE EVANGELIQUE DE LA MISSION EN AFRIQUE",
     "type_etablissment": "Privé"
   },
   {
     "code": "UNIP-RDC",
-    "name": "UNIVERSITE DE LA PAIX DE LA REPUBLIQUE DÃ‰MOCRATIQUE DU CONGO",
+    "name": "UNIVERSITE DE LA PAIX DE LA REPUBLIQUE DEMOCRATIQUE DU CONGO",
     "type_etablissment": "Privé"
   },
   {
@@ -2492,12 +2564,12 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISTA-BENI",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÃ‰ES DE BENI",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÉES DE BENI",
     "type_etablissment": "Public"
   },
   {
     "code": "ISTA-GBADOLITE",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÃ‰ES DE GBADOLITE",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÉES DE GBADOLITE",
     "type_etablissment": "Public"
   },
   {
@@ -2507,17 +2579,17 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISTA-MBUJI-MAYI",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÃ‰ES DE MBUJI-MAYI",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÉES DE MBUJI-MAYI",
     "type_etablissment": "Public"
   },
   {
     "code": "ISTA-RUTSHURU",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÃ‰ES DE RUTSHURU",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÉES DE RUTSHURU",
     "type_etablissment": "Public"
   },
   {
     "code": "ISTAD-MASAMUNA",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÃ‰ES DE MASAMUNA",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÉES DE MASAMUNA",
     "type_etablissment": "Public"
   },
   {
@@ -2622,12 +2694,12 @@ const UNIVERSITIES = [
   },
   {
     "code": "UNP BUKAVU",
-    "name": "UNIVERSITÃ‰ DE LA NOUVELLE PÃ‚QUES DE BUKAVU",
+    "name": "UNIVERSITÉ DE LA NOUVELLE PÃQUES DE BUKAVU",
     "type_etablissment": "Privé"
   },
   {
     "code": "UEAGL",
-    "name": "UNIVERSITÃ‰ DE L'EXCELLENCE POUR L'AFRIQUE DES GRANDS LACS",
+    "name": "UNIVERSITÉ DE L'EXCELLENCE POUR L'AFRIQUE DES GRANDS LACS",
     "type_etablissment": "Privé"
   },
   {
@@ -2917,12 +2989,12 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISSS-CR/KKT",
-    "name": "INSTITUT SUPERIEUR DES SCIENCES DE SANTE DE LA CROIX-ROUGE Ã  KIKWIT",
+    "name": "INSTITUT SUPERIEUR DES SCIENCES DE SANTE DE LA CROIX-ROUGE Ã KIKWIT",
     "type_etablissment": "Privé"
   },
   {
     "code": "ISSS-KINDU",
-    "name": "INSTITUT SUPERIEUR DES SCIENCES DE SANTÃ‰-KINDU",
+    "name": "INSTITUT SUPERIEUR DES SCIENCES DE SANTE/KINDU",
     "type_etablissment": "Privé"
   },
   {
@@ -3686,8 +3758,8 @@ const UNIVERSITIES = [
     "type_etablissment": "Privé"
   },
   {
-    "code": "ISP-YANGAMBI",
-    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE - YANGAMBI",
+    "code": "ISPT-YANGAMBI",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE ET TECHNIQUE- YANGAMBI",
     "type_etablissment": "Public"
   },
   {
@@ -3827,12 +3899,12 @@ const UNIVERSITIES = [
   },
   {
     "code": "UKAM",
-    "name": "UNIVERSITE KAM Ã  TSHIKAPA",
+    "name": "UNIVERSITE KAM DE TSHIKAPA",
     "type_etablissment": "Privé"
   },
   {
     "code": "ULK-O",
-    "name": "UNIVERSITÃ‰ LIBRE DE KASAI-OUEST Ã  TSHIKAPA",
+    "name": "UNIVERSITÉ LIBRE DE KASAI-OUEST À TSHIKAPA",
     "type_etablissment": "Privé"
   },
   {
@@ -3852,22 +3924,22 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISDR/LUKIBU",
-    "name": "INSTITUT SUPERIEUR DE DÃ‰VELOPPEMENT RURAL DE LUKIBU",
+    "name": "INSTITUT SUPERIEUR DE DEVELOPPEMENT RURAL DE LUKIBU",
     "type_etablissment": "Privé"
   },
   {
     "code": "ISTM-LUKIBU",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MÃ‰DICALES LUKIBU  ",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MEDICALES LUKIBU  ",
     "type_etablissment": "Privé"
   },
   {
     "code": "ISTM-KAMONIA",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MÃ‰DICALES KAMONIA  ",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MEDICALES KAMONIA  ",
     "type_etablissment": "Privé"
   },
   {
     "code": "ISTM-NYANGA",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MÃ‰DICALES NYANGA",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MEDICALES NYANGA",
     "type_etablissment": "Privé"
   },
   {
@@ -3877,7 +3949,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISSM-TSHIKAPA",
-    "name": "INSTITUT SUPERIEUR DES SCIENCES MÃ‰DICALES DE TSHIKAPA ",
+    "name": "INSTITUT SUPERIEUR DES SCIENCES MEDICALES DE TSHIKAPA ",
     "type_etablissment": "Privé"
   },
   {
@@ -3902,7 +3974,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "UNIV-MB",
-    "name": "UNIVERSITÃ‰ MONT-BLEU",
+    "name": "UNIVERSITE MONT-BLEU",
     "type_etablissment": "Privé"
   },
   {
@@ -3947,7 +4019,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISP CECA-20",
-    "name": "INSTITUT SUPERIEUR DE PÃ‰DAGOGIE  CECA-20",
+    "name": "INSTITUT SUPERIEUR DE PEDAGOGIE  CECA-20",
     "type_etablissment": "Privé"
   },
   {
@@ -3957,7 +4029,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISP-BIAKATO",
-    "name": "INSTITUT SUPERIEUR PÃ‰DAGOGIQUE   BIAKATO",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE   BIAKATO",
     "type_etablissment": "Privé"
   },
   {
@@ -3977,37 +4049,37 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISDR-BUNIA",
-    "name": "INSTITUT SUPERIEUR DE DÃ‰VELOPPEMENT RURAL DE BUNIA",
+    "name": "INSTITUT SUPERIEUR DE DEVELOPPEMENT RURAL DE BUNIA",
     "type_etablissment": "Privé"
   },
   {
     "code": "UEPI",
-    "name": "UNIVERSITÃ‰ Ã‰VANGÃ‰LIQUE POUR LE PROGRÃˆS EN NITURI",
+    "name": "UNIVERSITÉ ÉVANGÉLIQUE POUR LE PROGRÈ EN ITURI",
     "type_etablissment": "Privé"
   },
   {
     "code": "UEA",
-    "name": "UNIVERSITÃ‰ Ã‰VANGÃ‰LIQUE DE ARU",
+    "name": "UNIVERSITÉ ÉVANGÉLIQUE EN AFRIQUE / BUKAVU",
     "type_etablissment": "Privé"
   },
   {
     "code": "ISP-KOMANDA",
-    "name": "INSTITUT SUPERIEUR PÃ‰DAGOGIQUE DE KOMANDA",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE DE KOMANDA",
     "type_etablissment": "Privé"
   },
   {
     "code": "ISP-NIANIA",
-    "name": "INSTITUT SUPERIEUR PÃ‰DAGOGIQUE DE NIANIA",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE DE NIANIA",
     "type_etablissment": "Privé"
   },
   {
     "code": "ISDD-BUNIA",
-    "name": "INSTITUT SUPERIEUR DE DÃ‰VELOPPEMENT DURABLE DE BUNIA",
+    "name": "INSTITUT SUPERIEUR DE DEVELOPPEMENT DURABLE DE BUNIA",
     "type_etablissment": "Privé"
   },
   {
     "code": "ISTM-ARIWARA",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MÃ‰DICALES D'ARIWXARA",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MEDICALES D'ARIWXARA",
     "type_etablissment": "Privé"
   },
   {
@@ -4057,7 +4129,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISSR-D",
-    "name": "INSTITUT SUPERIEUR DES SCIENCES RELIGIEUSES ET DE DÃ‰VELOPPEMENT",
+    "name": "INSTITUT SUPERIEUR DES SCIENCES RELIGIEUSES ET DE DEVELOPPEMENT",
     "type_etablissment": "Privé"
   },
   {
@@ -4157,12 +4229,12 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISTM/ FRANCO AMERICA",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MÃ‰DICALES FRANCO AMERICAIN ",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MEDICALES FRANCO AMERICAIN ",
     "type_etablissment": "Privé"
   },
   {
     "code": "ISTM DON PETIT PETIT",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MÃ‰DICALES DON PETIT PETIT",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MEDICALES DON PETIT PETIT",
     "type_etablissment": "Privé"
   },
   {
@@ -4172,7 +4244,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "UDMAZ",
-    "name": "UNIVERSITÃ‰ DE MAZENOD",
+    "name": "UNIVERSITE DE MAZENOD",
     "type_etablissment": "Privé"
   },
   {
@@ -4182,7 +4254,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "UPM",
-    "name": "UNIVERSITÃ‰ PROFESSEUR MUTUMBI",
+    "name": "UNIVERSITE PROFESSEUR MUTUMBI",
     "type_etablissment": "Privé"
   },
   {
@@ -4202,7 +4274,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISTN",
-    "name": "INSTITUT SUPERIEUR DE THÃ‰OLOGIE DE NGALIEMA",
+    "name": "INSTITUT SUPERIEUR DE THEOLOGIE DE NGALIEMA",
     "type_etablissment": "Privé"
   },
   {
@@ -4232,7 +4304,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "PUK-E",
-    "name": "UNIVERSITÃ‰ PROGRÃˆS DE KINSHASA-EST",
+    "name": "UNIVERSITE PROGRÃˆS DE KINSHASA-EST",
     "type_etablissment": "Privé"
   },
   {
@@ -4242,7 +4314,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "UACO",
-    "name": "UNIVERSITÃ‰ ADVENTISTE DU CONGO",
+    "name": "UNIVERSITE ADVENTISTE DU CONGO",
     "type_etablissment": "Privé"
   },
   {
@@ -4257,7 +4329,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "UAD",
-    "name": "UNIVERSITÃ‰ AFRICAINE DE DÃ‰VELOPPEMENT",
+    "name": "UNIVERSITE AFRICAINE DE DEVELOPPEMENT",
     "type_etablissment": "Privé"
   },
   {
@@ -4337,7 +4409,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "UNISTECH",
-    "name": "UNIVERSITÃ‰  INTERNATIONALE DES SCIENCES DE LA TECHNOLOGIE DU CONGO",
+    "name": "UNIVERSITE  INTERNATIONALE DES SCIENCES DE LA TECHNOLOGIE DU CONGO",
     "type_etablissment": "Privé"
   },
   {
@@ -4352,17 +4424,17 @@ const UNIVERSITIES = [
   },
   {
     "code": "U R",
-    "name": "UNIVERSITÃ‰ RICHFIELD S.A.",
+    "name": "UNIVERSITE RICHFIELD S.A.",
     "type_etablissment": "Privé"
   },
   {
     "code": "UNIECO",
-    "name": "UNIVERSITÃ‰ DES EGLISES INDÃ‰PENDANTE DU CONGO",
+    "name": "UNIVERSITE DES EGLISES INDEPENDANTE DU CONGO",
     "type_etablissment": "Privé"
   },
   {
     "code": "ISTM/MAMPALA",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MÃ‰DICALES DE MAMPALA",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MEDICALES DE MAMPALA",
     "type_etablissment": "Privé"
   },
   {
@@ -4377,7 +4449,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISGDE",
-    "name": "INSTITUT SUPERIEUR DE GESTION ET DE DÃ‰VELOPPEMENT ENDOGÃˆNE",
+    "name": "INSTITUT SUPERIEUR DE GESTION ET DE DEVELOPPEMENT ENDOGÃˆNE",
     "type_etablissment": "Privé"
   },
   {
@@ -4422,7 +4494,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "UCC",
-    "name": "UNIVERSITÃ‰ CARTÃ‰SIENNE AU CONGO",
+    "name": "UNIVERSITE CARTESIENNE AU CONGO",
     "type_etablissment": "Privé"
   },
   {
@@ -4642,7 +4714,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISDR NYAKARIBA",
-    "name": "INSTITUT SUPERIEUR DE DÃ‰VELOPPEMENT RURAL DE NYAKARIBA",
+    "name": "INSTITUT SUPERIEUR DE DEVELOPPEMENT RURAL DE NYAKARIBA",
     "type_etablissment": "Privé"
   },
   {
@@ -4652,7 +4724,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISTDM",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES DE DÃ‰VELOPPEMENT  ET DE MANAGEMENT DE GOMA",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES DE DEVELOPPEMENT  ET DE MANAGEMENT DE GOMA",
     "type_etablissment": "Privé"
   },
   {
@@ -4682,12 +4754,12 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISIETEM",
-    "name": "INSTITUT SUPERIEUR D'INFORMATIQUE, D'ENSEIGNEMENT ET DES TECHNIQUES MÃ‰DICALES",
+    "name": "INSTITUT SUPERIEUR D'INFORMATIQUE, D'ENSEIGNEMENT ET DES TECHNIQUES MEDICALES",
     "type_etablissment": "Privé"
   },
   {
     "code": "ISTM NYIRAGONGO",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MÃ‰DICALES NYIRAGONGO",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MEDICALES NYIRAGONGO",
     "type_etablissment": "Privé"
   },
   {
@@ -4717,12 +4789,12 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISP/BANDASHA",
-    "name": "INSTITUT SUPERIEUR PÃ‰DAGOGIQUE DE BANDASHA",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE DE BANDASHA",
     "type_etablissment": "Privé"
   },
   {
     "code": "ISTM KASINDI",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MÃ‰DICALES  KASINDI",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MEDICALES  KASINDI",
     "type_etablissment": "Privé"
   },
   {
@@ -4747,12 +4819,37 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISPKI",
-    "name": "ISPKI KASINDI",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE DE KIPAKA",
+    "type_etablissment": "Public"
+  },
+  {
+    "code": "ISP/KABEYA",
+    "name": "INSTITUT SUPÉRIEUR PÉDAGOGIQUE DE KABEYA KAMUANGA",
+    "type_etablissment": "Public"
+  },
+  {
+    "code": "ISP-KANGU",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE DE KANGU",
+    "type_etablissment": "Public"
+  },
+  {
+    "code": "ISP/MOANDA",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE DE MOANDA",
+    "type_etablissment": "Public"
+  },
+  {
+    "code": "UNIM-RDC",
+    "name": "UNIVERSITÉ DES MARTYRS DU CONGO",
+    "type_etablissment": "Public"
+  },
+  {
+    "code": "ISPKA",
+    "name": "ISPKA KASINDI",
     "type_etablissment": "Privé"
   },
   {
     "code": "ISAM-BENI",
-    "name": "INSTITUT SUPERIEUR DES ARTS ET MÃ‰TIERS DE BENI",
+    "name": "INSTITUT SUPERIEUR DES ARTS ET METIERS DE BENI",
     "type_etablissment": "Privé"
   },
   {
@@ -4807,12 +4904,12 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISP KABAYA",
-    "name": "INSTITUT SUPERIEUR PÃ‰DAGOGIQUE DE KABAYA",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE DE KABAYA",
     "type_etablissment": "Privé"
   },
   {
     "code": "ISTD GOMA MASISI",
-    "name": "INSTITUT SUPERIEUR DES  TECHNIQUES DE DÃ‰VELOPPEMENT DE GOMA  A MASISI CENTRE",
+    "name": "INSTITUT SUPERIEUR DES  TECHNIQUES DE DEVELOPPEMENT DE GOMA  A MASISI CENTRE",
     "type_etablissment": "Privé"
   },
   {
@@ -4837,7 +4934,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISP BAMBO",
-    "name": "INSTITUT SUPERIEUR PÃ‰DAGOGIQUE DE BAMBO",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE DE BAMBO",
     "type_etablissment": "Privé"
   },
   {
@@ -4857,12 +4954,12 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISCA-G",
-    "name": "INSTITUT SUPERIEUR DE CHIMIE APPLIQUÃ‰E DE GOMA",
+    "name": "INSTITUT SUPERIEUR DE CHIMIE APPLIQUEE DE GOMA",
     "type_etablissment": "Privé"
   },
   {
     "code": "ISP/KAMANGO",
-    "name": "INSTITUT SUPERIEUR PÃ‰DAGOGIQUE DE KAMANGO",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE DE KAMANGO",
     "type_etablissment": "Privé"
   },
   {
@@ -4872,12 +4969,12 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISP BUTEMBO",
-    "name": "INSTITUT SUPERIEUR PÃ‰DAGOGIQUE DE BUTEMBO",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE DE BUTEMBO",
     "type_etablissment": "Public"
   },
   {
     "code": "UPROGEL",
-    "name": "UNIVERSITÃ‰ PROGRESSISTE DES GRANDS LACS",
+    "name": "UNIVERSITE PROGRESSISTE DES GRANDS LACS",
     "type_etablissment": "Privé"
   },
   {
@@ -4887,7 +4984,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISTM-GL",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MÃ‰DICALES  DES GRANDS LACS  DE GOMA",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MEDICALES  DES GRANDS LACS  DE GOMA",
     "type_etablissment": "Privé"
   },
   {
@@ -5227,7 +5324,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "UPB",
-    "name": "UNIVERSITE DE PROXIMITÃ‰ DE DE BUKAVU",
+    "name": "UNIVERSITE DE PROXIMITE DE DE BUKAVU",
     "type_etablissment": "Privé"
   },
   {
@@ -5267,7 +5364,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ULDACB",
-    "name": "UNIVERSITE LIBRE DE DÃ‰VELOPPEMENT EN AFRIQUE CENTRAL DE BUKAVU ",
+    "name": "UNIVERSITE LIBRE DE DEVELOPPEMENT EN AFRIQUE CENTRAL DE BUKAVU ",
     "type_etablissment": "Privé"
   },
   {
@@ -5467,7 +5564,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISTM-GL DE BUKAVU",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MÃ‰DICALES  DES GRAND LACS DE GOMA A BUKAVU",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MEDICALES  DES GRAND LACS DE GOMA A BUKAVU",
     "type_etablissment": "Privé"
   },
   {
@@ -5552,12 +5649,12 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISDR DU KIVU/D",
-    "name": "INSTITUT SUPERIEUR DE DÃ‰VELOPPEMENT RURAL DU KIVU/D",
+    "name": "INSTITUT SUPERIEUR DE DEVELOPPEMENT RURAL DU KIVU/D",
     "type_etablissment": "Public"
   },
   {
     "code": "ISDR KIVU/B",
-    "name": "INSTITUT SUPERIEUR DE DÃ‰VELOPPEMENT  RURAL DE KIVU BRUR",
+    "name": "INSTITUT SUPERIEUR DE DEVELOPPEMENT  RURAL DE KIVU BRUR",
     "type_etablissment": "Public"
   },
   {
@@ -5582,7 +5679,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISTM KAMITUGA",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MÃ‰DICALES  KAMITUGA",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MEDICALES  KAMITUGA",
     "type_etablissment": "Privé"
   },
   {
@@ -5607,7 +5704,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISDU/K",
-    "name": "INSTITUT SUPERIEUR DE DÃ‰VELOPPEMENT URBAIN DE KADUTU",
+    "name": "INSTITUT SUPERIEUR DE DEVELOPPEMENT URBAIN DE KADUTU",
     "type_etablissment": "Privé"
   },
   {
@@ -5617,7 +5714,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISPRA/K",
-    "name": "INSTITUT SUPERIEUR DE PAYS RÃ‰GIONAUX EN AFRIQUE DE KAMITUGA",
+    "name": "INSTITUT SUPERIEUR DE PAYS REGIONAUX EN AFRIQUE DE KAMITUGA",
     "type_etablissment": "Privé"
   },
   {
@@ -5942,22 +6039,22 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISSRD/LENDISA DE BWA",
-    "name": "INSTITUT SUPERIEUR DES SCIENCES RELIGIEUSES ET DE DÃ‰VELOPPEMENT  LENDISA DE BWAMANDA",
+    "name": "INSTITUT SUPERIEUR DES SCIENCES RELIGIEUSES ET DE DEVELOPPEMENT  LENDISA DE BWAMANDA",
     "type_etablissment": "Privé"
   },
   {
     "code": "ISDR DONGO",
-    "name": "INSTITUT SUPERIEUR DE DÃ‰VELOPPEMENT RURAL DE DONGO",
+    "name": "INSTITUT SUPERIEUR DE DEVELOPPEMENT RURAL DE DONGO",
     "type_etablissment": "Privé"
   },
   {
     "code": "ISP KUNGU",
-    "name": "INSTITUT SUPERIEUR DE PÃ‰DAGOGIQUE DE KUNGU/NGIRI",
+    "name": "INSTITUT SUPERIEUR DE PEDAGOGIQUE DE KUNGU/NGIRI",
     "type_etablissment": "Privé"
   },
   {
     "code": "ISTM BUDJALA",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MÃ‰DICALES  BUDJALA",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MEDICALES  BUDJALA",
     "type_etablissment": "Privé"
   },
   {
@@ -6168,7 +6265,7 @@ const UNIVERSITIES = [
   {
     "code": "UM",
     "name": "UNIVERSITE DE MBUJI MAYI",
-    "type_etablissment": "Privé"
+    "type_etablissment": "Public"
   },
   {
     "code": "ISMD",
@@ -6377,7 +6474,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISP/ABUZI",
-    "name": "INSTITUT SUPERIEUR PÃ‰DAGOGIQUE D'ABUZI (ISP/ABUZI) A YAKOMA",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE D'ABUZI (ISP/ABUZI) A YAKOMA",
     "type_etablissment": "Privé"
   },
   {
@@ -6422,37 +6519,37 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISPK",
-    "name": "INSTITUT SUPERIEUR PÃ‰DAGOGIQUE KOTAKOLI",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE KOTAKOLI",
     "type_etablissment": "Public"
   },
   {
     "code": "ISPB",
-    "name": "INSTITUT SUPERIEUR PÃ‰DAGOGIQUE BODANGABO",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE BODANGABO",
     "type_etablissment": "Public"
   },
   {
     "code": "ISTMB",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MÃ‰DICALES DE BODANGABO",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MEDICALES DE BODANGABO",
     "type_etablissment": "Public"
   },
   {
     "code": "ISPND",
-    "name": "INSTITUT SUPERIEUR PÃ‰DAGOGIQUE NDUBULU",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE NDUBULU",
     "type_etablissment": "Public"
   },
   {
     "code": "ISPYB",
-    "name": "INSTITUT SUPERIEUR PÃ‰DAGOGIQUE DE YAKOMA, extension de BIRA",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE DE YAKOMA, extension de BIRA",
     "type_etablissment": "Public"
   },
   {
     "code": "ISP-YAKOMA YUYU",
-    "name": "INSTITUT SUPERIEUR PÃ‰DAGOGIQUE YAKOMA , extension de YUYU",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE YAKOMA , extension de YUYU",
     "type_etablissment": "Public"
   },
   {
     "code": "ISP-YAKOMA KANDO",
-    "name": "INSTITUT SUPERIEUR PÃ‰DAGOGIQUE YAKOMA, extension de KANDO",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE YAKOMA, extension de KANDO",
     "type_etablissment": "Public"
   },
   {
@@ -6462,17 +6559,17 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISP-ABUZI WAPINDA",
-    "name": "INSTITUT SUPERIEUR PÃ‰DAGOGIQUE ABUZI, extension de WAPINDA",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE ABUZI, extension de WAPINDA",
     "type_etablissment": "Public"
   },
   {
     "code": "ISP-ABUZI BWATO",
-    "name": "INSTITUT SUPERIEUR PÃ‰DAGOGIQUE ABUZI, extension de BWATO",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE ABUZI, extension de BWATO",
     "type_etablissment": "Public"
   },
   {
     "code": "ISP-ABUZI GBUA",
-    "name": "INSTITUT SUPERIEUR PÃ‰DAGOGIQUE ABUZI, extension de GBUA",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE ABUZI, extension de GBUA",
     "type_etablissment": "Public"
   },
   {
@@ -6717,7 +6814,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISAD DE GOMA",
-    "name": "INSTITUT SUPERIEUR DES ARTS ET DE DÃ‰VELOPPEMENT DE GOMA ",
+    "name": "INSTITUT SUPERIEUR DES ARTS ET DE DEVELOPPEMENT DE GOMA ",
     "type_etablissment": "Privé"
   },
   {
@@ -6777,7 +6874,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "UPK",
-    "name": "UNIVERSITÃ‰ PROTESTANTE DE KIMPESE",
+    "name": "UNIVERSITE PROTESTANTE DE KIMPESE",
     "type_etablissment": "Privé"
   },
   {
@@ -6787,7 +6884,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "UPRECO",
-    "name": "UNIVERSITÃ‰ PRESBYTÃ‰RIENNE SHAPPERD ET LAPSLEY DU CONGO",
+    "name": "UNIVERSITE PRESBYTERIENNE SHAPPERD ET LAPSLEY DU CONGO",
     "type_etablissment": "Privé"
   },
   {
@@ -6802,12 +6899,12 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISTM SAINT LUC",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MÃ‰DICALES SAINT LUC",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES MEDICALES SAINT LUC",
     "type_etablissment": "Privé"
   },
   {
     "code": "UPL",
-    "name": "UNIVERSITÃ‰ PROTESTANTE DE LUBUMBASHI",
+    "name": "UNIVERSITE PROTESTANTE DE LUBUMBASHI",
     "type_etablissment": "Privé"
   },
   {
@@ -6837,27 +6934,27 @@ const UNIVERSITIES = [
   },
   {
     "code": "UAGO",
-    "name": "UNIVERSITÃ‰ ADVENTISTE DE GOMA",
+    "name": "UNIVERSITE ADVENTISTE DE GOMA",
     "type_etablissment": "Privé"
   },
   {
     "code": "ULPGL DE GOMA",
-    "name": "UNIVERSITÃ‰ LIBRE DES PAYS DES GRANDS LACS A GOMA",
+    "name": "UNIVERSITE LIBRE DES PAYS DES GRANDS LACS A GOMA",
     "type_etablissment": "Privé"
   },
   {
     "code": "UCNDK",
-    "name": "UNIVERSITÃ‰ DE CONSERVATION DE LA NATURE ET DE DÃ‰VELOPPEMENT ",
+    "name": "UNIVERSITE DE CONSERVATION DE LA NATURE ET DE DEVELOPPEMENT ",
     "type_etablissment": "Privé"
   },
   {
     "code": "ISSC-MULO",
-    "name": "UNIVERSITÃ‰ SAINTE CROIX DE MULO",
+    "name": "UNIVERSITE SAINTE CROIX DE MULO",
     "type_etablissment": "Privé"
   },
   {
     "code": "UDG DE BUTEMBO",
-    "name": "UNIVERSITÃ‰ DIVINA GLORIA",
+    "name": "UNIVERSITE DIVINA GLORIA",
     "type_etablissment": "Privé"
   },
   {
@@ -6867,7 +6964,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISDR DE KITSHANGA",
-    "name": "INSTITUT SUPERIEUR DE DÃ‰VELOPPEMENT RURAL DES GRANDS LACS ",
+    "name": "INSTITUT SUPERIEUR DE DEVELOPPEMENT RURAL DES GRANDS LACS ",
     "type_etablissment": "Privé"
   },
   {
@@ -6877,7 +6974,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "UEA",
-    "name": "UNIVERSITÃ‰ Ã‰VANGÃ‰LIQUE EN AFRIQUE DE BUKAVU",
+    "name": "UNIVERSITE EVANGELIQUE EN AFRIQUE DE BUKAVU",
     "type_etablissment": "Privé"
   },
   {
@@ -6892,12 +6989,12 @@ const UNIVERSITIES = [
   },
   {
     "code": "UMK",
-    "name": "UNIVERSITÃ‰ MÃ‰THODISTE AU KATANGA A MULUNGUISHI",
+    "name": "UNIVERSITE METHODISTE AU KATANGA A MULUNGUISHI",
     "type_etablissment": "Privé"
   },
   {
     "code": "UNIJK",
-    "name": "UNIVERSITÃ‰ JEAN XXIII DE KOLWEZI",
+    "name": "UNIVERSITE JEAN XXIII DE KOLWEZI",
     "type_etablissment": "Privé"
   },
   {
@@ -6907,7 +7004,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISP-L",
-    "name": "INSTITUT SUPERIEUR PÃ‰DAGOGIQUE LIBRE DE KISANGANI ",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE LIBRE DE KISANGANI ",
     "type_etablissment": "Privé"
   },
   {
@@ -7022,12 +7119,12 @@ const UNIVERSITIES = [
   },
   {
     "code": "UAC",
-    "name": "UNIVERSITÃ‰ DE L'ALLIANCE AU CONGO ",
+    "name": "UNIVERSITE DE L'ALLIANCE AU CONGO ",
     "type_etablissment": "Privé"
   },
   {
     "code": "IUEFD",
-    "name": "INSTITUT UNIVERSITAIRE D'Ã‰TUDE, DE FORMATION ET DE DÃ‰VELOPPEMENT ",
+    "name": "INSTITUT UNIVERSITAIRE D'ETUDE, DE FORMATION ET DE DEVELOPPEMENT ",
     "type_etablissment": "Privé"
   },
   {
@@ -7037,7 +7134,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISTAC",
-    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUÃ‰ES ET COMMERCIALES",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUEES ET COMMERCIALES",
     "type_etablissment": "Privé"
   },
   {
@@ -7222,7 +7319,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISGC",
-    "name": "INSTITUT SUPERIEUR DE GÃ‰NIE COMMERCIAL D'INKISI",
+    "name": "INSTITUT SUPERIEUR DE GENIE COMMERCIAL D'INKISI",
     "type_etablissment": "Privé"
   },
   {
@@ -7307,7 +7404,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISSSa",
-    "name": "INSTITUT SUPERIEUR DES SCIENCES DE SANTÃ‰ ",
+    "name": "INSTITUT SUPERIEUR DES SCIENCES DE SANTE ",
     "type_etablissment": "Privé"
   },
   {
@@ -7347,7 +7444,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "ISTADC",
-    "name": "INSTITUT SUPERIEUR THEOLOGIQUE DES ASSEMBLÃ‰ES DE DIEU AU CONGO",
+    "name": "INSTITUT SUPERIEUR THEOLOGIQUE DES ASSEMBLEES DE DIEU AU CONGO",
     "type_etablissment": "Privé"
   },
   {
@@ -7397,17 +7494,17 @@ const UNIVERSITIES = [
   },
   {
     "code": "UAB",
-    "name": "UNIVERSITÃ‰ ANGLICANE DU CONGO DE BUNIA",
+    "name": "UNIVERSITE ANGLICANE DU CONGO DE BUNIA",
     "type_etablissment": "Privé"
   },
   {
     "code": "UCB",
-    "name": "UNIVERSITÃ‰ CATHOLIQUE DE BUKAVU",
+    "name": "UNIVERSITE CATHOLIQUE DE BUKAVU",
     "type_etablissment": "Privé"
   },
   {
     "code": "ISTIA",
-    "name": "INSTITUT SUPERIEUR TECHNIQUE D'INFORMATIQUE APPLIQUÃ‰E ",
+    "name": "INSTITUT SUPERIEUR TECHNIQUE D'INFORMATIQUE APPLIQUEE ",
     "type_etablissment": "Privé"
   },
   {
@@ -7417,7 +7514,7 @@ const UNIVERSITIES = [
   },
   {
     "code": "UM",
-    "name": "UNIVERSITÃ‰ DE MBUJI-MAYI",
+    "name": "UNIVERSITE DE MBUJI-MAYI",
     "type_etablissment": "Privé"
   },
   {
@@ -7543,7 +7640,7 @@ const UNIVERSITIES = [
 ];
 
 
-const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onRequestAccountTypeReset, formMode, preloadedRecord, onBackToRecord }) => {
+const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onRequestAccountTypeReset, formMode, preloadedRecord, onBackToRecord, onOpenMessaging }) => {
   // État initial par défaut
   const defaultFormState = {
     nom: '',
@@ -7578,7 +7675,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
     universite_obtention_diplome_doctorat: '',
     pays_obtention_diplome_doctorat: '',
     date_obtention_diplome_doctorat: '',
-    a_etudie_etranger: '',
     commentaire_confirmation: '',
     informations_vraies: false,
     diplome_etat: null,
@@ -7643,6 +7739,33 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
     }
   }, [preselectedType]);
 
+  useEffect(() => {
+    if (formMode === 'edit') return;
+
+    let migratedMatricule = '';
+    try {
+      migratedMatricule = (localStorage.getItem(MIGRATED_MATRICULE_KEY) || '').trim();
+    } catch (error) {
+      console.error('Erreur lors de la récupération du matricule migré:', error);
+    }
+
+    if (!migratedMatricule) return;
+
+    setFormData((prev) => {
+      const accountType = preselectedType || prev.typecompte;
+
+      if (accountType === 'CT') {
+        return { ...prev, matricule: migratedMatricule };
+      }
+
+      if (accountType === 'Professeur') {
+        return { ...prev, matricule_esu: migratedMatricule };
+      }
+
+      return prev;
+    });
+  }, [formMode, preselectedType]);
+
   // Si on arrive depuis MyRecord en mode edit, pré-remplir les données
   useEffect(() => {
     if (formMode === 'edit' && preloadedRecord) {
@@ -7679,12 +7802,11 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
         has_diplome_etat: d.diplome_etat ? 'Oui' : '',
         has_diplome_graduat: d.diplome_graduat ? 'Oui' : '',
         has_diplome_licence: d.diplome_licence ? 'Oui' : '',
-        has_inscription_dea_des: !d.diplome_master_dea_ds && (d.etablissement_inscription_3cycle || d.date_inscription || d.statut_apprenant) ? 'Oui' : '',
+        has_inscription_dea_des: !d.diplome_master_dea_ds && (d.etablissement_inscription_3cycle || d.decision_inscription || d.date_inscription || d.statut_apprenant) ? 'Oui' : '',
         has_diplome_master_dea_ds: d.diplome_master_dea_ds ? 'Oui' : '',
         universite_master_dea_ds: d.universite_master_dea_ds || '',
         pays_master_dea_ds: d.pays_master_dea_ds || '',
         date_obtention_master_dea_ds: d.date_obtention_master_dea_ds || '',
-        a_etudie_etranger: d.a_etudie_etranger || '',
         // Professeur
         type_etablissement: d.type_etablissement || '',
         matricule_esu: d.matricule_esu || '',
@@ -7697,7 +7819,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
         type_diplome_dea_des: d.type_diplome_dea_des || '',
         reference_dernier_arrete: d.reference_dernier_arrete || '',
         photo_identite: null,
-        possede_diplome: d.possede_diplome || '',
+        possede_diplome: d.possede_diplome || (d.copie_diplome ? 'Oui' : d.documents_equivalents ? 'Non' : ''),
         copie_diplome: null,
         documents_equivalents: null,
         charge_horaire: null,
@@ -7733,6 +7855,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
   const [messageType, setMessageType] = useState('');
   const [showViewModal, setShowViewModal] = useState(false);
   const [showProfileSidebar, setShowProfileSidebar] = useState(false);
+  const [messagingUnreadCount, setMessagingUnreadCount] = useState(0);
   const [showTypeChangeModal, setShowTypeChangeModal] = useState(false);
   const [pendingTypeSelection, setPendingTypeSelection] = useState('');
   const [previousType, setPreviousType] = useState('');
@@ -7752,6 +7875,35 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
   const [changedFields, setChangedFields] = useState({});
   const [fieldErrors, setFieldErrors] = useState({});
   const [filePreviews, setFilePreviews] = useState({});
+
+  const compteId = currentUser?.id || currentUser?.compte_id;
+  const resolvedAccountType = normalizeAccountType(currentUser?.type_de_compte || preselectedType || formData.typecompte);
+  const canUseMessaging = MESSAGING_ALLOWED_TYPES.includes(resolvedAccountType);
+
+  const refreshMessagingBadge = useCallback(async () => {
+    if (!canUseMessaging || !compteId) {
+      setMessagingUnreadCount(0);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${SERVER_URL}/api/enseignants/messagerie/conversations/?current_compte_id=${encodeURIComponent(compteId)}`, {
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!response.ok) return;
+      const data = await response.json().catch(() => ({}));
+      const nextConversations = asArray(data, ['conversations']);
+      setMessagingUnreadCount(nextConversations.reduce((total, conversation) => total + getUnreadConversationCount(conversation, compteId), 0));
+    } catch (error) {
+      console.warn('[Messaging] form badge refresh failed:', error);
+    }
+  }, [canUseMessaging, compteId]);
+
+  useEffect(() => {
+    refreshMessagingBadge();
+    const timer = setInterval(refreshMessagingBadge, 12000);
+    return () => clearInterval(timer);
+  }, [refreshMessagingBadge]);
 
   // Si le formulaire est rendu sans type de compte ET aucun type n'a été pré-sélectionné,
   // demander au parent (App) d'afficher l'écran de sélection global.
@@ -7987,6 +8139,20 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
       nextChangedFields.reference_dernier_arrete = '';
     }
 
+    if (name === 'has_diplome_etat') {
+      if (newValue !== 'Oui') {
+        nextFormData.diplome_etat = null;
+        nextChangedFields.diplome_etat = null;
+      }
+    }
+
+    if (name === 'has_diplome_graduat') {
+      if (newValue !== 'Oui') {
+        nextFormData.diplome_graduat = null;
+        nextChangedFields.diplome_graduat = null;
+      }
+    }
+
     if (name === 'has_diplome_licence') {
       if (newValue !== 'Oui') {
         nextFormData.diplome_licence = null;
@@ -8043,6 +8209,18 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
       nextChangedFields.decision_inscription_ass_ct = null;
       nextChangedFields.date_inscription = '';
       nextChangedFields.statut_apprenant = '';
+    }
+
+    if (name === 'possede_diplome') {
+      if (newValue !== 'Oui') {
+        nextFormData.copie_diplome = null;
+        nextChangedFields.copie_diplome = null;
+      }
+
+      if (newValue !== 'Non') {
+        nextFormData.documents_equivalents = null;
+        nextChangedFields.documents_equivalents = null;
+      }
     }
 
     setFormData(nextFormData);
@@ -8232,6 +8410,38 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
   const universitySelectPlaceholder = isUniversitySelectDisabled
     ? "Sélectionnez d'abord le type d'établissement"
     : "Sélectionner ou rechercher un établissement...";
+
+  const existingFileData = editMode ? (preloadedRecord || viewedData || {}) : {};
+  const getExistingFilePath = (fieldName) => {
+    const fieldMap = {
+      arrete_nomination_ct: 'arrete_nomination',
+      decision_inscription_ass_ct: 'decision_inscription',
+      decision_nomination_assistant: 'decision_nomination',
+    };
+    return existingFileData[fieldName] || existingFileData[fieldMap[fieldName]] || '';
+  };
+  const hasCurrentFile = (fieldName) => Boolean(formData[fieldName] || getExistingFilePath(fieldName));
+  const getFileNameFromPath = (path) => String(path).split('/').pop() || String(path);
+  const getFileUrl = (path) => String(path).startsWith('http') ? path : `${SERVER_URL}${path}`;
+  const renderFileStatus = (fieldName) => {
+    const selectedFile = formData[fieldName];
+    if (typeof File !== 'undefined' && selectedFile instanceof File) {
+      return <small className="file-info">✅ Nouveau fichier sélectionné: {selectedFile.name}</small>;
+    }
+
+    const existingPath = getExistingFilePath(fieldName);
+    if (!existingPath) return null;
+
+    const fileName = getFileNameFromPath(existingPath);
+    return (
+      <small className="file-info">
+        Fichier actuel:&nbsp;
+        <a href={getFileUrl(existingPath)} target="_blank" rel="noopener noreferrer" className="file-link" title={fileName}>
+          {fileName}
+        </a>
+      </small>
+    );
+  };
 
   const handleViewData = async () => {
     if (!viewMatricule.trim()) {
@@ -8423,7 +8633,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
 
           <DataSection title="Informations Administratives">
             <DataRow label="Type Établissement" value={viewedData.type_etablissement === 'Public' ? 'Établissement Public' : viewedData.type_etablissement === 'Privé' ? 'Établissement Privé' : viewedData.type_etablissement} />
-            <DataRow label="Grade actuel" value={formatGradeActuel(viewedData.grade_actuel)} />
+            <DataRow label="Qualité ou Grade Académique" value={formatGradeActuel(viewedData.grade_actuel)} />
             <DataRow label="Établissement d'attache" value={viewedData.universite_attache || viewedData.universite_attache_precisee} />
             <DataRow label="Domaine de recherche" value={viewedData.domaine_recherche} />
           </DataSection>
@@ -8441,7 +8651,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
             <DataRow label="Université d'obtention de votre master/D.E.A/D.E.S" value={viewedData.universite_master_dea_ds} />
             <DataRow label="Pays d'obtention de votre Master/D.E.A/D.E.S" value={viewedData.pays_master_dea_ds} />
             <DataRow label="Date d'obtention de votre Master/D.E.A/D.E.S" value={viewedData.date_obtention_master_dea_ds} />
-            <DataRow label="A étudié à l'étranger" value={viewedData.a_etudie_etranger} hideEmpty />
             <DataRow label="Université d'obtention de votre Doctorat" value={viewedData.universite_obtention_diplome_doctorat} />
             <DataRow label="Pays d'obtention de votre Doctorat" value={viewedData.pays_obtention_diplome_doctorat} />
             <DataRow label="Date d'obtention de votre Doctorat" value={viewedData.date_obtention_diplome_doctorat} />
@@ -8615,6 +8824,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
       has_diplome_etat: viewedData.diplome_etat ? 'Oui' : '',
       has_diplome_graduat: viewedData.diplome_graduat ? 'Oui' : '',
       has_diplome_licence: viewedData.diplome_licence ? 'Oui' : '',
+      has_inscription_dea_des: !viewedData.diplome_master_dea_ds && (viewedData.etablissement_inscription_3cycle || viewedData.decision_inscription || viewedData.date_inscription || viewedData.statut_apprenant) ? 'Oui' : '',
       has_diplome_master_dea_ds: viewedData.diplome_master_dea_ds ? 'Oui' : '',
       universite_master_dea_ds: viewedData.universite_master_dea_ds || '',
       pays_master_dea_ds: viewedData.pays_master_dea_ds || '',
@@ -8628,9 +8838,10 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
       numero_arrete_equivalence: viewedData.numero_arrete_equivalence || '',
       copie_arrete_equivalence: null,
       type_diplome: viewedData.type_diplome || '',
+      type_diplome_dea_des: viewedData.type_diplome_dea_des || '',
       reference_dernier_arrete: viewedData.reference_dernier_arrete || '',
       photo_identite: null,
-      possede_diplome: viewedData.possede_diplome || '',
+      possede_diplome: viewedData.possede_diplome || (viewedData.copie_diplome ? 'Oui' : viewedData.documents_equivalents ? 'Non' : ''),
       copie_diplome: null,
       documents_equivalents: null,
       charge_horaire: null,
@@ -8642,6 +8853,9 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
       decision_nomination_assistant: null,
       decision_inscription_ass_ct: null,
       photo_passeport: null,
+      type_assistant: viewedData.type_assistant || '',
+      categorie_assistant: viewedData.categorie_assistant || '',
+      centre_laboratoire_recherche: viewedData.centre_laboratoire_recherche || '',
       // ── CT-specific ───────────────────────────────────────────────────────
       arrete_nomination_ct: null,
     });
@@ -8795,7 +9009,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
         universite_obtention_diplome_doctorat: '',
         pays_obtention_diplome_doctorat: '',
         date_obtention_diplome_doctorat: '',
-        a_etudie_etranger: '',
       });
     } catch (error) {
       let errorMsg = 'Erreur lors de la modification';
@@ -8834,16 +9047,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
       }
     };
 
-    const reqDiplomaFile = (hasField, fileField, label) => {
-      if (formData[hasField] !== 'Oui') {
-        errors[hasField] = true;
-        errorMessages.push(`${label} (sélectionnez Oui et téléversez le fichier)`);
-        return;
-      }
-
-      reqFile(fileField, label);
-    };
-
     // Champs communs à tous les types de compte
     req('nom', 'Nom');
     req('postnom', 'Postnom');
@@ -8856,31 +9059,29 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
     }
 
     if (['Assistant', 'CT', 'Professeur'].includes(formData.typecompte)) {
-      reqDiplomaFile('has_diplome_etat', 'diplome_etat', "Copie du Diplôme d'État ou document équivalent");
-      reqDiplomaFile('has_diplome_graduat', 'diplome_graduat', 'Copie du Diplôme de Graduat ou document équivalent');
-      if (formData.typecompte === 'Professeur') {
-        reqDiplomaFile('has_diplome_licence', 'diplome_licence', 'Copie du Diplôme de Licence ou document équivalent');
-      } else {
-        req('has_diplome_licence', 'Diplôme de Licence / Médecine');
-        if (formData.has_diplome_licence === 'Oui') {
-          reqFile('diplome_licence', 'Copie du Diplôme de Licence ou document équivalent');
-        }
+      req('has_diplome_etat', "Diplôme d'État ou document équivalent");
+      if (formData.has_diplome_etat === 'Oui') {
+        reqFile('diplome_etat', "Copie du Diplôme d'État ou document équivalent");
       }
-      if (formData.typecompte === 'Professeur') {
-        reqDiplomaFile('has_diplome_master_dea_ds', 'diplome_master_dea_ds', 'Copie du Diplôme de Master / D.E.A / D.E.S ou document équivalent');
-      } else {
-        req('has_diplome_master_dea_ds', 'Diplôme Master / D.E.A / D.E.S ou document équivalent');
-        if (formData.has_diplome_master_dea_ds === 'Oui') {
-          reqFile('diplome_master_dea_ds', 'Copie du Diplôme de Master / D.E.A / D.E.S ou document équivalent');
-        }
-        if (formData.has_diplome_master_dea_ds === 'Non') {
-          req('has_inscription_dea_des', 'Êtes-vous inscrit au Master/D.E.A/D.E.S ?');
-          if (formData.has_inscription_dea_des === 'Oui') {
-            req('etablissement_inscription_3cycle', "Établissement d'Inscription au Troisième Cycle");
-            reqFile('decision_inscription_ass_ct', "Décision d'Inscription (D.E.A/D.E.S ou Doctorat/Thèse)");
-            req('date_inscription', "Date d'inscription au troisième cycle");
-            req('statut_apprenant', 'Statut Apprenant');
-          }
+      req('has_diplome_graduat', 'Diplôme de Graduat ou document équivalent');
+      if (formData.has_diplome_graduat === 'Oui') {
+        reqFile('diplome_graduat', 'Copie du Diplôme de Graduat ou document équivalent');
+      }
+      req('has_diplome_licence', 'Diplôme de Licence / Médecine');
+      if (formData.has_diplome_licence === 'Oui') {
+        reqFile('diplome_licence', 'Copie du Diplôme de Licence ou document équivalent');
+      }
+      req('has_diplome_master_dea_ds', 'Diplôme Master / D.E.A / D.E.S ou document équivalent');
+      if (formData.has_diplome_master_dea_ds === 'Oui') {
+        reqFile('diplome_master_dea_ds', 'Copie du Diplôme de Master / D.E.A / D.E.S ou document équivalent');
+      }
+      if (formData.typecompte !== 'Professeur' && formData.has_diplome_master_dea_ds === 'Non') {
+        req('has_inscription_dea_des', 'Êtes-vous inscrit au Master/D.E.A/D.E.S ?');
+        if (formData.has_inscription_dea_des === 'Oui') {
+          req('etablissement_inscription_3cycle', "Établissement d'Inscription au Troisième Cycle");
+          reqFile('decision_inscription_ass_ct', "Décision d'Inscription (D.E.A/D.E.S ou Doctorat/Thèse)");
+          req('date_inscription', "Date d'inscription au troisième cycle");
+          req('statut_apprenant', 'Statut Apprenant');
         }
       }
 
@@ -8934,7 +9135,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
     } else {
       // Professeur — seuls les champs strictement requis par le serveur
       req('prenom', 'Prénom');
-      req('a_etudie_etranger', "Avez-vous étudié à l'étranger ?");
       if (formData.has_diplome_master_dea_ds === 'Oui') {
         req('type_diplome_dea_des', 'Type de diplôme Master / D.E.A / D.E.S');
       }
@@ -9130,7 +9330,6 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
           universite_obtention_diplome_doctorat: formData.universite_obtention_diplome_doctorat,
           pays_obtention_diplome_doctorat:       formData.pays_obtention_diplome_doctorat,
           date_obtention_diplome_doctorat:       formData.date_obtention_diplome_doctorat,
-          a_etudie_etranger:              formData.a_etudie_etranger,
           commentaire_confirmation:        formData.commentaire_confirmation,
           informations_vraies:             formData.informations_vraies,
           universite_master_dea_ds:        formData.universite_master_dea_ds,
@@ -9185,6 +9384,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
         // Supprimer le brouillon après enregistrement réussi
         try {
           localStorage.removeItem(DRAFT_KEY);
+          localStorage.removeItem(MIGRATED_MATRICULE_KEY);
         } catch (error) {
           console.error('Erreur lors de la suppression du brouillon:', error);
         }
@@ -9376,11 +9576,9 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
           name="decision_inscription_ass_ct"
           accept={ALLOWED_FILE_ACCEPT}
           onChange={handleFileChange}
-          required={!formData.decision_inscription_ass_ct}
+          required={!hasCurrentFile('decision_inscription_ass_ct')}
         />
-        {formData.decision_inscription_ass_ct && (
-          <small className="file-info">✅ Fichier sélectionné: {formData.decision_inscription_ass_ct.name}</small>
-        )}
+        {renderFileStatus('decision_inscription_ass_ct')}
       </div>
 
       <div className="form-group">
@@ -9448,6 +9646,22 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
           >
             Guide
           </a>
+          {canUseMessaging && (
+            <button
+              type="button"
+              className="mr-message-nav-btn"
+              onClick={onOpenMessaging}
+              title="Ouvrir la messagerie"
+            >
+              <FaComments />
+              Messagerie
+              {messagingUnreadCount > 0 && (
+                <span className="mr-message-badge" aria-label={`${messagingUnreadCount} nouveau message`}>
+                  {messagingUnreadCount > 99 ? '99+' : messagingUnreadCount}
+                </span>
+              )}
+            </button>
+          )}
           {onLogout && (
             <button
               type="button"
@@ -9720,14 +9934,12 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
                 name="photo_passeport"
                 accept={PHOTO_ACCEPT}
                 onChange={handleFileChange}
-                required={!formData.photo_passeport}
+                required={!hasCurrentFile('photo_passeport')}
               />
               {filePreviews.photo_passeport && (
                 <img src={filePreviews.photo_passeport} alt="Aperçu photo passeport" className="file-preview-img" />
               )}
-              {!filePreviews.photo_passeport && formData.photo_passeport && (
-                <small className="file-info">✅ Fichier sélectionné : {formData.photo_passeport.name}</small>
-              )}
+              {!filePreviews.photo_passeport && renderFileStatus('photo_passeport')}
             </div>
 
             <div className="form-group">
@@ -9800,11 +10012,9 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
                 name="decision_nomination_assistant"
                 accept={ALLOWED_FILE_ACCEPT}
                 onChange={handleFileChange}
-                required={!formData.decision_nomination_assistant}
+                required={!hasCurrentFile('decision_nomination_assistant')}
               />
-              {formData.decision_nomination_assistant && (
-                <small className="file-info">✅ Fichier sélectionné: {formData.decision_nomination_assistant.name}</small>
-              )}
+              {renderFileStatus('decision_nomination_assistant')}
             </div>
 
           </fieldset>
@@ -9828,8 +10038,8 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
             <div className="form-group">
               <label htmlFor="diplome_etat_ass">Téléverser la copie du diplôme d'État ou d'un document équivalent. <span className="required">*</span></label>
               <small className="file-hint">{ALLOWED_FILE_LABEL}</small>
-              <input type="file" id="diplome_etat_ass" name="diplome_etat" accept={ALLOWED_FILE_ACCEPT} onChange={handleFileChange} required={!formData.diplome_etat} />
-              {formData.diplome_etat && <small className="file-info">✅ Fichier sélectionné: {formData.diplome_etat.name}</small>}
+              <input type="file" id="diplome_etat_ass" name="diplome_etat" accept={ALLOWED_FILE_ACCEPT} onChange={handleFileChange} required={!hasCurrentFile('diplome_etat')} />
+              {renderFileStatus('diplome_etat')}
             </div>
           )}
 
@@ -9846,8 +10056,8 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
             <div className="form-group">
               <label htmlFor="diplome_graduat_ass">Copie du Diplôme de Graduat ou Document équivalent <span className="required">*</span></label>
               <small className="file-hint">{ALLOWED_FILE_LABEL}</small>
-              <input type="file" id="diplome_graduat_ass" name="diplome_graduat" accept={ALLOWED_FILE_ACCEPT} onChange={handleFileChange} required={!formData.diplome_graduat} />
-              {formData.diplome_graduat && <small className="file-info">✅ Fichier sélectionné: {formData.diplome_graduat.name}</small>}
+              <input type="file" id="diplome_graduat_ass" name="diplome_graduat" accept={ALLOWED_FILE_ACCEPT} onChange={handleFileChange} required={!hasCurrentFile('diplome_graduat')} />
+              {renderFileStatus('diplome_graduat')}
             </div>
           )}
 
@@ -9864,8 +10074,8 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
             <div className="form-group">
               <label htmlFor="diplome_licence_ass">Copie du Diplôme de Licence ou Document équivalent <span className="required">*</span></label>
               <small className="file-hint">{ALLOWED_FILE_LABEL}</small>
-              <input type="file" id="diplome_licence_ass" name="diplome_licence" accept={ALLOWED_FILE_ACCEPT} onChange={handleFileChange} required={!formData.diplome_licence} />
-              {formData.diplome_licence && <small className="file-info">✅ Fichier sélectionné: {formData.diplome_licence.name}</small>}
+              <input type="file" id="diplome_licence_ass" name="diplome_licence" accept={ALLOWED_FILE_ACCEPT} onChange={handleFileChange} required={!hasCurrentFile('diplome_licence')} />
+              {renderFileStatus('diplome_licence')}
             </div>
           )}
           {/* Diplôme Master / D.E.A / D.E.S */}
@@ -9913,8 +10123,8 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
               <div className="form-group">
                 <label htmlFor="diplome_master_ass">Copie du Diplôme de Master / D.E.A / D.E.S ou Document équivalent <span className="required">*</span></label>
                 <small className="file-hint">{ALLOWED_FILE_LABEL}</small>
-                <input type="file" id="diplome_master_ass" name="diplome_master_dea_ds" accept={ALLOWED_FILE_ACCEPT} onChange={handleFileChange} required={!formData.diplome_master_dea_ds} />
-                {formData.diplome_master_dea_ds && <small className="file-info">✅ Fichier sélectionné: {formData.diplome_master_dea_ds.name}</small>}
+                <input type="file" id="diplome_master_ass" name="diplome_master_dea_ds" accept={ALLOWED_FILE_ACCEPT} onChange={handleFileChange} required={!hasCurrentFile('diplome_master_dea_ds')} />
+                {renderFileStatus('diplome_master_dea_ds')}
               </div>
               <div className="form-group">
                 <label htmlFor="universite_master_dea_ds_ass">Université d'obtention de votre master/D.E.A/D.E.S <span className="required">*</span></label>
@@ -9958,9 +10168,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
                 accept={ALLOWED_FILE_ACCEPT}
                 onChange={handleFileChange}
               />
-              {formData.charge_horaire && (
-                <small className="file-info">✅ Fichier sélectionné: {formData.charge_horaire.name}</small>
-              )}
+              {renderFileStatus('charge_horaire')}
             </div>
           </fieldset>
         )}
@@ -10084,11 +10292,9 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
                 name="arrete_nomination_ct"
                 accept={ALLOWED_FILE_ACCEPT}
                 onChange={handleFileChange}
-                required={!formData.arrete_nomination_ct}
+                required={!hasCurrentFile('arrete_nomination_ct')}
               />
-              {formData.arrete_nomination_ct && (
-                <small className="file-info">✅ Fichier sélectionné: {formData.arrete_nomination_ct.name}</small>
-              )}
+              {renderFileStatus('arrete_nomination_ct')}
             </div>
 
             <div className="form-group">
@@ -10100,14 +10306,12 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
                 name="photo_passeport"
                 accept={PHOTO_ACCEPT}
                 onChange={handleFileChange}
-                required={!formData.photo_passeport}
+                required={!hasCurrentFile('photo_passeport')}
               />
               {filePreviews.photo_passeport && (
                 <img src={filePreviews.photo_passeport} alt="Aperçu photo passeport" className="file-preview-img" />
               )}
-              {!filePreviews.photo_passeport && formData.photo_passeport && (
-                <small className="file-info">✅ Fichier sélectionné : {formData.photo_passeport.name}</small>
-              )}
+              {!filePreviews.photo_passeport && renderFileStatus('photo_passeport')}
             </div>
 
             <div className="form-group">
@@ -10177,8 +10381,8 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
             <div className="form-group">
               <label htmlFor="diplome_etat_ct">Téléverser la copie du diplôme d'État ou d'un document équivalent. <span className="required">*</span></label>
               <small className="file-hint">{ALLOWED_FILE_LABEL}</small>
-              <input type="file" id="diplome_etat_ct" name="diplome_etat" accept={ALLOWED_FILE_ACCEPT} onChange={handleFileChange} required={!formData.diplome_etat} />
-              {formData.diplome_etat && <small className="file-info">✅ Fichier sélectionné: {formData.diplome_etat.name}</small>}
+              <input type="file" id="diplome_etat_ct" name="diplome_etat" accept={ALLOWED_FILE_ACCEPT} onChange={handleFileChange} required={!hasCurrentFile('diplome_etat')} />
+              {renderFileStatus('diplome_etat')}
             </div>
           )}
 
@@ -10195,8 +10399,8 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
             <div className="form-group">
               <label htmlFor="diplome_graduat_ct">Copie du Diplôme de Graduat ou Document équivalent <span className="required">*</span></label>
               <small className="file-hint">{ALLOWED_FILE_LABEL}</small>
-              <input type="file" id="diplome_graduat_ct" name="diplome_graduat" accept={ALLOWED_FILE_ACCEPT} onChange={handleFileChange} required={!formData.diplome_graduat} />
-              {formData.diplome_graduat && <small className="file-info">✅ Fichier sélectionné: {formData.diplome_graduat.name}</small>}
+              <input type="file" id="diplome_graduat_ct" name="diplome_graduat" accept={ALLOWED_FILE_ACCEPT} onChange={handleFileChange} required={!hasCurrentFile('diplome_graduat')} />
+              {renderFileStatus('diplome_graduat')}
             </div>
           )}
 
@@ -10213,8 +10417,8 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
             <div className="form-group">
               <label htmlFor="diplome_licence_ct">Copie du Diplôme de Licence  ou Document équivalent <span className="required">*</span></label>
               <small className="file-hint">{ALLOWED_FILE_LABEL}</small>
-              <input type="file" id="diplome_licence_ct" name="diplome_licence" accept={ALLOWED_FILE_ACCEPT} onChange={handleFileChange} required={!formData.diplome_licence} />
-              {formData.diplome_licence && <small className="file-info">✅ Fichier sélectionné: {formData.diplome_licence.name}</small>}
+              <input type="file" id="diplome_licence_ct" name="diplome_licence" accept={ALLOWED_FILE_ACCEPT} onChange={handleFileChange} required={!hasCurrentFile('diplome_licence')} />
+              {renderFileStatus('diplome_licence')}
             </div>
           )}
           {/* Diplôme Master / D.E.A / D.E.S */}
@@ -10262,8 +10466,8 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
               <div className="form-group">
                 <label htmlFor="diplome_master_ct">Copie du Diplôme de Master / D.E.A / D.E.S ou Document équivalent <span className="required">*</span></label>
                 <small className="file-hint">{ALLOWED_FILE_LABEL}</small>
-                <input type="file" id="diplome_master_ct" name="diplome_master_dea_ds" accept={ALLOWED_FILE_ACCEPT} onChange={handleFileChange} required={!formData.diplome_master_dea_ds} />
-                {formData.diplome_master_dea_ds && <small className="file-info">✅ Fichier sélectionné: {formData.diplome_master_dea_ds.name}</small>}
+                <input type="file" id="diplome_master_ct" name="diplome_master_dea_ds" accept={ALLOWED_FILE_ACCEPT} onChange={handleFileChange} required={!hasCurrentFile('diplome_master_dea_ds')} />
+                {renderFileStatus('diplome_master_dea_ds')}
               </div>
               <div className="form-group">
                 <label htmlFor="universite_master_dea_ds_ct">Université d'obtention de votre Master/D.E.A/D.E.S <span className="required">*</span></label>
@@ -10301,9 +10505,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
               accept={ALLOWED_FILE_ACCEPT}
               onChange={handleFileChange}
             />
-            {formData.charge_horaire && (
-              <small className="file-info">✅ Fichier sélectionné: {formData.charge_horaire.name}</small>
-            )}
+            {renderFileStatus('charge_horaire')}
           </div>
         </fieldset>
         )}
@@ -10481,7 +10683,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
           )}
 
           <div className="form-group">
-            <label htmlFor="grade_actuel">Grade Actuel <span className="required">*</span></label>
+            <label htmlFor="grade_actuel">Qualité ou Grade Académique <span className="required">*</span></label>
             <select
               id="grade_actuel"
               name="grade_actuel"
@@ -10593,11 +10795,9 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
                 name="diplome_etat"
                 accept={ALLOWED_FILE_ACCEPT}
                 onChange={handleFileChange}
-                required={!formData.diplome_etat}
+                required={!hasCurrentFile('diplome_etat')}
               />
-              {formData.diplome_etat && (
-                <small className="file-info">✅ Fichier sélectionné: {formData.diplome_etat.name}</small>
-              )}
+              {renderFileStatus('diplome_etat')}
             </div>
           )}
 
@@ -10626,11 +10826,9 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
                 name="diplome_graduat"
                 accept={ALLOWED_FILE_ACCEPT}
                 onChange={handleFileChange}
-                required={!formData.diplome_graduat}
+                required={!hasCurrentFile('diplome_graduat')}
               />
-              {formData.diplome_graduat && (
-                <small className="file-info">✅ Fichier sélectionné: {formData.diplome_graduat.name}</small>
-              )}
+              {renderFileStatus('diplome_graduat')}
             </div>
           )}
 
@@ -10659,11 +10857,9 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
                 name="diplome_licence"
                 accept={ALLOWED_FILE_ACCEPT}
                 onChange={handleFileChange}
-                required={!formData.diplome_licence}
+                required={!hasCurrentFile('diplome_licence')}
               />
-              {formData.diplome_licence && (
-                <small className="file-info">✅ Fichier sélectionné: {formData.diplome_licence.name}</small>
-              )}
+              {renderFileStatus('diplome_licence')}
             </div>
           )}
 
@@ -10707,11 +10903,9 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
                   name="diplome_master_dea_ds"
                   accept={ALLOWED_FILE_ACCEPT}
                   onChange={handleFileChange}
-                  required={!formData.diplome_master_dea_ds}
+                  required={!hasCurrentFile('diplome_master_dea_ds')}
                 />
-                {formData.diplome_master_dea_ds && (
-                  <small className="file-info">✅ Fichier sélectionné: {formData.diplome_master_dea_ds.name}</small>
-                )}
+                {renderFileStatus('diplome_master_dea_ds')}
               </div>
               <div className="form-group">
                 <label htmlFor="universite_master_dea_ds">Université d'obtention de votre master/D.E.A/D.E.S <span className="optional">(optionnel)</span></label>
@@ -10752,26 +10946,11 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
           )}
 
           <div className="form-group">
-            <label htmlFor="possede_diplome">Possédez-vous une copie de votre Diplôme de Doctorat ? <span className="required">*</span></label>
+            <label htmlFor="possede_diplome">Possédez-vous un doctorat ? <span className="required">*</span></label>
             <select
               id="possede_diplome"
               name="possede_diplome"
               value={formData.possede_diplome}
-              onChange={handleInputChange}
-              required
-            >
-              <option value="">-- Sélectionner --</option>
-              <option value="Oui">Oui</option>
-              <option value="Non">Non</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="a_etudie_etranger">Avez-vous étudié à l'étranger ? <span className="required">*</span></label>
-            <select
-              id="a_etudie_etranger"
-              name="a_etudie_etranger"
-              value={formData.a_etudie_etranger}
               onChange={handleInputChange}
               required
             >
@@ -10853,25 +11032,11 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
                 name="copie_diplome"
                 accept={ALLOWED_FILE_ACCEPT}
                 onChange={handleFileChange}
-                required={formData.possede_diplome === 'Oui'}
+                required={formData.possede_diplome === 'Oui' && !hasCurrentFile('copie_diplome')}
               />
+              {renderFileStatus('copie_diplome')}
             </div>
             </>
-          )}
-
-          {formData.possede_diplome === 'Non' && (
-            <div className="form-group">
-              <label htmlFor="documents_equivalents">Documents Équivalents <span className="required">*</span></label>
-              <small className="file-hint">{ALLOWED_FILE_LABEL}</small>
-              <input
-                type="file"
-                id="documents_equivalents"
-                name="documents_equivalents"
-                accept={ALLOWED_FILE_ACCEPT}
-                onChange={handleFileChange}
-                required={formData.possede_diplome === 'Non'}
-              />
-            </div>
           )}
 
           <div className="form-group">
@@ -10883,15 +11048,13 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
               name="charge_horaire"
               accept={ALLOWED_FILE_ACCEPT}
               onChange={handleFileChange}
-              required
+              required={!hasCurrentFile('charge_horaire')}
             />
-            {formData.charge_horaire && (
-              <small className="file-info">✅ Fichier sélectionné: {formData.charge_horaire.name}</small>
-            )}
+            {renderFileStatus('charge_horaire')}
           </div>
 
           <div className="form-group">
-            <label htmlFor="photo_identite">Photo d'Identité <span className="required">*</span></label>
+            <label htmlFor="photo_identite">Photo Passeport <span className="required">*</span></label>
             <small className="file-hint">{PHOTO_LABEL}</small>
             <input
               type="file"
@@ -10899,14 +11062,12 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
               name="photo_identite"
               accept={PHOTO_ACCEPT}
               onChange={handleFileChange}
-              required
+              required={!hasCurrentFile('photo_identite')}
             />
             {filePreviews.photo_identite && (
-              <img src={filePreviews.photo_identite} alt="Aperçu photo identité" className="file-preview-img" />
+              <img src={filePreviews.photo_identite} alt="Aperçu photo passeport" className="file-preview-img" />
             )}
-            {!filePreviews.photo_identite && formData.photo_identite && (
-              <small className="file-info">✅ Fichier sélectionné : {formData.photo_identite.name}</small>
-            )}
+            {!filePreviews.photo_identite && renderFileStatus('photo_identite')}
           </div>
 
         </fieldset>

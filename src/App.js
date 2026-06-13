@@ -43,6 +43,7 @@ function App() {
   const [formMode, setFormMode] = useState('create'); // 'create' | 'edit'
   const [recordToEdit, setRecordToEdit] = useState(null); // données à pré-remplir en mode edit
   const [editRecordType, setEditRecordType] = useState(''); // 'Professeur' | 'Assistant' | 'CT'
+  const [openMessagingOnRecord, setOpenMessagingOnRecord] = useState(false);
 
   // Vérifier s'il y a une session active au démarrage
   useEffect(() => {
@@ -279,6 +280,8 @@ function App() {
               setRecordToEdit(null);
               setEditRecordType('');
             }}
+            openMessagingOnRecord={openMessagingOnRecord}
+            onMessagingOpened={() => setOpenMessagingOnRecord(false)}
             onLogout={handleLogout}
           />
         ) : (
@@ -299,6 +302,10 @@ function App() {
               setFormMode('create');
               setRecordToEdit(null);
               setEditRecordType('');
+            }}
+            onOpenMessaging={() => {
+              setOpenMessagingOnRecord(true);
+              setAppView('record');
             }}
           />
         )

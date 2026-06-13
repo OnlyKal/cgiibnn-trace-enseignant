@@ -856,6 +856,48 @@ legend {
   border-color: #bfdbfe;
 }
 
+.mr-message-nav-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 38px;
+  padding: 0.5rem 0.9rem;
+  background: #0f766e;
+  border: 1px solid #0f766e;
+  border-radius: 7px;
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.mr-message-nav-btn:hover {
+  background: #115e59;
+  border-color: #115e59;
+}
+
+.mr-message-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 0.35rem;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .btn-back-to-record {
   display: inline-flex;
   align-items: center;

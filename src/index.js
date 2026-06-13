@@ -22,6 +22,7 @@ const clearAllCaches = async () => {
         'authToken',
         'user',
         'user_email',
+        'migrated-matricule',
       ];
 
       const backup = {};

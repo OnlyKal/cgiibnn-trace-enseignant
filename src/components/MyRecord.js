@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   FaUser, FaFileAlt, FaEdit, FaPlusCircle, FaSync,
-  FaSignOutAlt, FaExclamationTriangle,
+  FaSignOutAlt, FaExclamationTriangle, FaComments, FaUserShield,
+  FaSearch, FaPaperclip, FaPaperPlane, FaTimes, FaDownload,
+  FaEye, FaCheck, FaCheckDouble,
 } from 'react-icons/fa';
 import { SERVER_URL } from '../config';
 import ProfileSidebar from './ProfileSidebar';
@@ -42,6 +44,7 @@ const SUBTITLE_MAP = {
 };
 
 const isPrivateEtablissement = (value) => value === 'Privé' || value === 'Établissement Privé';
+const MIGRATED_MATRICULE_KEY = 'migrated-matricule';
 
 const formatGradeActuel = (grade) => {
   const gradeLabels = {
@@ -80,6 +83,170 @@ const normalizeAccountType = (value = '') => {
   if (normalized === 'ct' || normalized.includes('chef')) return 'Chef de Travaux';
   if (normalized.includes('professeur')) return 'Professeur';
   return value;
+};
+
+const MESSAGING_ALLOWED_TYPES = ['Assistant', 'Chef de Travaux', 'Professeur'];
+const MAX_MESSAGE_FILE_SIZE = 20 * 1024 * 1024;
+const ALLOWED_MESSAGE_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'png', 'jpg', 'jpeg', 'gif', 'txt'];
+
+const asArray = (payload, keys = []) => {
+  if (Array.isArray(payload)) return payload;
+  for (const key of keys) {
+    if (Array.isArray(payload?.[key])) return payload[key];
+  }
+  if (Array.isArray(payload?.results)) return payload.results;
+  return [];
+};
+
+const getEntityId = (item) => {
+  const source = item || {};
+  return source.id || source.admin_id || source.compte_id || source.pk || source.utilisateur_id;
+};
+
+const getFullName = (item) => {
+  const source = item || {};
+  const directName = source.full_name || source.nom_complet || source.name || source.username;
+  if (directName) return directName;
+  return [source.nom, source.postnom, source.prenom].filter(Boolean).join(' ') || source.email || 'Administrateur';
+};
+
+const getAccountType = (item) => {
+  const source = item || {};
+  return source.type_de_compte || source.type_compte || source.account_type || source.role || 'Administrateur';
+};
+
+const getConversationId = (conversation) => {
+  const source = conversation || {};
+  return (
+    source.id ||
+    source.conversation_id ||
+    source.id_conversation ||
+    source.conversationId ||
+    source.pk ||
+    source.conversation?.id ||
+    source.conversation?.conversation_id ||
+    source.data?.id ||
+    source.data?.conversation_id
+  );
+};
+
+const normalizeConversationPayload = (payload) => (
+  payload?.conversation ||
+  payload?.data?.conversation ||
+  payload?.data ||
+  payload?.result ||
+  payload
+);
+
+const getUnreadConversationCount = (conversation, currentCompteId) => {
+  const source = conversation || {};
+  const numericCount = (
+    source.unread_count ??
+    source.unread_messages_count ??
+    source.messages_non_lus ??
+    source.non_lus ??
+    source.nombre_non_lus ??
+    source.nouveaux_messages ??
+    source.nb_nouveaux_messages ??
+    source.unread
+  );
+
+  if (Number(numericCount) > 0) return Number(numericCount);
+
+  if (
+    source.has_unread ||
+    source.a_des_messages_non_lus ||
+    source.nouveau_message ||
+    source.has_new_message
+  ) {
+    return 1;
+  }
+
+  const lastMessage = source.dernier_message || source.last_message || source.latest_message;
+  const lastMessageStatus = String(lastMessage?.statut || lastMessage?.status || lastMessage?.etat || '').toLowerCase();
+  const lastMessageRead = (
+    lastMessage?.lu ||
+    lastMessage?.is_read ||
+    lastMessage?.read ||
+    lastMessageStatus.includes('lu') ||
+    lastMessageStatus.includes('read')
+  );
+
+  if (lastMessage && !isOwnMessage(lastMessage, currentCompteId) && !lastMessageRead) {
+    return 1;
+  }
+
+  return 0;
+};
+
+const getMessageId = (message) => {
+  const source = message || {};
+  return source.id || source.message_id || source.pk;
+};
+
+const getMessageText = (message) => {
+  const source = message || {};
+  return source.contenu || source.content || source.message || source.texte || '';
+};
+
+const getMessageDate = (message) => {
+  const source = message || {};
+  return source.created_at || source.date_envoi || source.envoye_le || source.timestamp || source.updated_at;
+};
+
+const formatMessageTime = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+};
+
+const getMessageStatus = (message) => {
+  const source = message || {};
+  const rawStatus = String(source.statut || source.status || source.etat || '').toLowerCase();
+  if (source.lu || rawStatus.includes('lu') || rawStatus.includes('read')) return 'lu';
+  if (source.recu || rawStatus.includes('reçu') || rawStatus.includes('recu') || rawStatus.includes('delivered')) return 'reçu';
+  return rawStatus || 'envoyé';
+};
+
+const hasAttachment = (message) => {
+  const source = message || {};
+  return Boolean(source.piece_jointe || source.attachment || source.fichier || source.file || source.nom_fichier || source.file_name);
+};
+
+const getAttachmentName = (message) => {
+  const source = message || {};
+  const path = source.piece_jointe || source.attachment || source.fichier || source.file || '';
+  return source.nom_fichier || source.file_name || source.filename || String(path).split('/').pop() || 'Pièce jointe';
+};
+
+const isOwnMessage = (message, compteId) => {
+  const source = message || {};
+  if (source.is_mine !== undefined) return Boolean(source.is_mine);
+  if (source.est_moi !== undefined) return Boolean(source.est_moi);
+
+  const possibleSenderId = (
+    source.expediteur_id || source.sender_id || source.auteur_id ||
+    source.compte_id || source.current_compte_id || source.expediteur?.id ||
+    source.sender?.id || source.auteur?.id
+  );
+
+  if (possibleSenderId && compteId) {
+    return String(possibleSenderId) === String(compteId);
+  }
+
+  const senderType = String(
+    source.expediteur_type || source.sender_type || source.auteur_type ||
+    source.expediteur?.type_de_compte || ''
+  ).toLowerCase();
+
+  return senderType && !senderType.includes('admin');
+};
+
+const StatusIcon = ({ status }) => {
+  if (status === 'lu') return <FaCheckDouble className="mr-message-status-icon mr-message-status-icon--read" />;
+  if (status === 'reçu') return <FaCheckDouble className="mr-message-status-icon" />;
+  return <FaCheck className="mr-message-status-icon" />;
 };
 
 /* ─────────────────────────────────────────────────────────────
@@ -140,6 +307,505 @@ const Section = ({ title, children }) => (
   </div>
 );
 
+const MessagingPanel = ({ compteId, resolvedType, onBack, onUnreadChange }) => {
+  const [admins, setAdmins] = useState([]);
+  const [conversations, setConversations] = useState([]);
+  const [selectedAdmin, setSelectedAdmin] = useState(null);
+  const [selectedConversation, setSelectedConversation] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [messageText, setMessageText] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [loadingAdmins, setLoadingAdmins] = useState(false);
+  const [loadingConversations, setLoadingConversations] = useState(false);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [messagingError, setMessagingError] = useState('');
+  const [fileError, setFileError] = useState('');
+  const fileInputRef = useRef(null);
+  const messagesEndRef = useRef(null);
+  const messagesRef = useRef([]);
+
+  const canUseMessaging = MESSAGING_ALLOWED_TYPES.includes(resolvedType);
+
+  const requestJson = useCallback(async (endpoint, options = {}) => {
+    const response = await fetch(`${SERVER_URL}${endpoint}`, {
+      signal: AbortSignal.timeout(options.timeout || 30000),
+      ...options,
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.detail || payload.message || payload.error || `Erreur serveur (${response.status})`);
+    }
+    return payload;
+  }, []);
+
+  const fetchAdmins = useCallback(async () => {
+    if (!canUseMessaging) return;
+    setLoadingAdmins(true);
+    setMessagingError('');
+    try {
+      const data = await requestJson('/api/enseignants/messagerie/admins/');
+      setAdmins(asArray(data, ['admins', 'administrateurs']));
+    } catch (error) {
+      setMessagingError(error.message || 'Impossible de charger les administrateurs.');
+    } finally {
+      setLoadingAdmins(false);
+    }
+  }, [canUseMessaging, requestJson]);
+
+  const fetchConversations = useCallback(async () => {
+    if (!canUseMessaging || !compteId) return;
+    setLoadingConversations(true);
+    try {
+      const data = await requestJson(`/api/enseignants/messagerie/conversations/?current_compte_id=${encodeURIComponent(compteId)}`);
+      const nextConversations = asArray(data, ['conversations']);
+      setConversations(nextConversations);
+      if (typeof onUnreadChange === 'function') {
+        onUnreadChange(nextConversations.reduce((total, conversation) => total + getUnreadConversationCount(conversation, compteId), 0));
+      }
+    } catch (error) {
+      setMessagingError(error.message || 'Impossible de charger vos conversations.');
+    } finally {
+      setLoadingConversations(false);
+    }
+  }, [canUseMessaging, compteId, onUnreadChange, requestJson]);
+
+  const markConversationRead = useCallback(async (conversationId) => {
+    if (!conversationId || !compteId) return;
+    try {
+      await requestJson(`/api/enseignants/messagerie/conversations/${conversationId}/mark-read/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_compte_id: compteId }),
+      });
+    } catch (error) {
+      console.warn('[Messaging] mark-read failed:', error);
+    }
+  }, [compteId, requestJson]);
+
+  const loadMessages = useCallback(async (conversation) => {
+    const conversationId = getConversationId(conversation);
+    if (!conversationId || !compteId) return;
+
+    setLoadingMessages(true);
+    setMessagingError('');
+    try {
+      const data = await requestJson(`/api/enseignants/messagerie/conversations/${conversationId}/messages/?current_compte_id=${encodeURIComponent(compteId)}`);
+      const nextMessages = asArray(data, ['messages']);
+      setMessages(nextMessages);
+      await markConversationRead(conversationId);
+    } catch (error) {
+      setMessagingError(error.message || 'Impossible de charger les messages.');
+    } finally {
+      setLoadingMessages(false);
+    }
+  }, [compteId, markConversationRead, requestJson]);
+
+  const fetchNewMessages = useCallback(async () => {
+    const conversationId = getConversationId(selectedConversation);
+    if (!conversationId || !compteId) return;
+
+    const currentMessages = messagesRef.current;
+    const lastMessageId = currentMessages.length ? getMessageId(currentMessages[currentMessages.length - 1]) : null;
+    if (!lastMessageId) return;
+
+    try {
+      const data = await requestJson(`/api/enseignants/messagerie/conversations/${conversationId}/messages/?current_compte_id=${encodeURIComponent(compteId)}&after_id=${encodeURIComponent(lastMessageId)}`);
+      const freshMessages = asArray(data, ['messages']);
+      if (freshMessages.length) {
+        setMessages((previousMessages) => {
+          const knownIds = new Set(previousMessages.map((message) => String(getMessageId(message))));
+          return [
+            ...previousMessages,
+            ...freshMessages.filter((message) => !knownIds.has(String(getMessageId(message)))),
+          ];
+        });
+        await markConversationRead(conversationId);
+      }
+    } catch (error) {
+      console.warn('[Messaging] refresh failed:', error);
+    }
+  }, [compteId, markConversationRead, requestJson, selectedConversation]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messages]);
+
+  useEffect(() => {
+    fetchAdmins();
+    fetchConversations();
+  }, [fetchAdmins, fetchConversations]);
+
+  useEffect(() => {
+    if (!selectedConversation) return undefined;
+    const interval = setInterval(fetchNewMessages, 6000);
+    return () => clearInterval(interval);
+  }, [fetchNewMessages, selectedConversation]);
+
+  const filteredAdmins = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) return admins;
+    return admins.filter((admin) => {
+      const haystack = [
+        getFullName(admin),
+        getAccountType(admin),
+        admin.email,
+        admin.telephone,
+      ].filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [admins, searchTerm]);
+
+  const selectedAdminInfo = selectedAdmin || selectedConversation?.admin || selectedConversation?.administrateur || {};
+
+  const createOrGetConversation = useCallback(async (admin) => {
+    if (!compteId) {
+      throw new Error('Compte connecté introuvable. Veuillez vous reconnecter.');
+    }
+
+    const adminId = getEntityId(admin);
+    if (!adminId) {
+      throw new Error('Administrateur introuvable. Veuillez choisir un administrateur valide.');
+    }
+
+    const data = await requestJson('/api/enseignants/messagerie/conversations/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        current_compte_id: compteId,
+        admin_id: adminId,
+      }),
+    });
+    const conversation = normalizeConversationPayload(data);
+
+    if (!getConversationId(conversation)) {
+      throw new Error('Conversation introuvable après sélection de l’administrateur.');
+    }
+
+    return conversation;
+  }, [compteId, requestJson]);
+
+  const handleOpenConversation = async (admin) => {
+    if (!compteId) {
+      setMessagingError('Compte connecté introuvable. Veuillez vous reconnecter.');
+      return;
+    }
+
+    setSelectedAdmin(admin);
+    setSelectedConversation(null);
+    setMessages([]);
+    setLoadingMessages(true);
+    setMessagingError('');
+
+    try {
+      const conversation = await createOrGetConversation(admin);
+      setSelectedConversation(conversation);
+      await loadMessages(conversation);
+      fetchConversations();
+    } catch (error) {
+      setMessagingError(error.message || 'Impossible d’ouvrir cette conversation.');
+      setLoadingMessages(false);
+    }
+  };
+
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0];
+    setFileError('');
+
+    if (!file) {
+      setSelectedFile(null);
+      return;
+    }
+
+    const extension = file.name.split('.').pop().toLowerCase();
+    if (!ALLOWED_MESSAGE_EXTENSIONS.includes(extension)) {
+      setSelectedFile(null);
+      setFileError('Format non accepté. Fichiers autorisés : pdf, doc, docx, xls, xlsx, png, jpg, jpeg, gif, txt.');
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > MAX_MESSAGE_FILE_SIZE) {
+      setSelectedFile(null);
+      setFileError('La pièce jointe ne doit pas dépasser 20 MB.');
+      event.target.value = '';
+      return;
+    }
+
+    setSelectedFile(file);
+  };
+
+  const removeSelectedFile = () => {
+    setSelectedFile(null);
+    setFileError('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleComposerSubmit = (event) => {
+    event.preventDefault();
+  };
+
+  const handleSendMessage = async () => {
+    let activeConversation = selectedConversation;
+    let conversationId = getConversationId(activeConversation);
+    const trimmedText = messageText.trim();
+
+    if (!selectedAdmin && !conversationId) {
+      setMessagingError('Sélectionnez un administrateur dans la liste avant d’envoyer un message.');
+      return;
+    }
+
+    if (!trimmedText && !selectedFile) {
+      setFileError('Écrivez un message ou joignez un fichier avant l’envoi.');
+      return;
+    }
+
+    setSendingMessage(true);
+    setMessagingError('');
+    setFileError('');
+
+    try {
+      if (!conversationId && selectedAdmin) {
+        activeConversation = await createOrGetConversation(selectedAdmin);
+        conversationId = getConversationId(activeConversation);
+        setSelectedConversation(activeConversation);
+      }
+
+      if (!conversationId || !compteId) {
+        throw new Error('Conversation indisponible. Ouvrez l’administrateur puis réessayez.');
+      }
+
+      let data;
+      if (selectedFile) {
+        const formData = new FormData();
+        formData.append('current_compte_id', compteId);
+        formData.append('contenu', trimmedText);
+        formData.append('piece_jointe', selectedFile);
+        data = await requestJson(`/api/enseignants/messagerie/conversations/${conversationId}/messages/`, {
+          method: 'POST',
+          body: formData,
+          timeout: 240000,
+        });
+      } else {
+        data = await requestJson(`/api/enseignants/messagerie/conversations/${conversationId}/messages/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            current_compte_id: compteId,
+            contenu: trimmedText,
+          }),
+        });
+      }
+
+      const sentMessage = data.message || data;
+      setMessages((previousMessages) => [...previousMessages, sentMessage]);
+      setMessageText('');
+      removeSelectedFile();
+    } catch (error) {
+      setMessagingError(error.message || 'Impossible d’envoyer le message.');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
+  if (!canUseMessaging) {
+    return (
+      <section className="mr-messaging mr-messaging--locked">
+        <div className="mr-messaging-locked-card">
+          <FaComments />
+          <div>
+            <h2>Messagerie indisponible</h2>
+            <p>Cette messagerie est réservée aux comptes Assistant, Chef de Travaux et Professeur.</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="mr-messaging" aria-label="Messagerie administrateur">
+      <div className="mr-messaging-sidebar">
+        <div className="mr-messaging-sidebar-header">
+          <div>
+            <span className="mr-kicker">Messagerie</span>
+            <h2>Administrateurs</h2>
+            <p>{conversations.length} conversation{conversations.length > 1 ? 's' : ''}</p>
+          </div>
+          <div className="mr-messaging-sidebar-actions">
+            {(loadingAdmins || loadingConversations) && <span className="mr-mini-loader" aria-label="Chargement" />}
+            <button type="button" className="mr-chat-back-btn" onClick={onBack}>
+              Retour
+            </button>
+          </div>
+        </div>
+
+        <label className="mr-admin-search">
+          <FaSearch />
+          <input
+            type="search"
+            placeholder="Rechercher un administrateur"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+          />
+        </label>
+
+        {messagingError && <div className="mr-chat-error">{messagingError}</div>}
+
+        <div className="mr-admin-list">
+          {loadingAdmins && !admins.length ? (
+            <div className="mr-chat-placeholder">Chargement des administrateurs...</div>
+          ) : filteredAdmins.length ? (
+            filteredAdmins.map((admin) => {
+              const adminId = getEntityId(admin);
+              const isActive = adminId && getEntityId(selectedAdmin) === adminId;
+              return (
+                <button
+                  key={adminId || getFullName(admin)}
+                  type="button"
+                  className={`mr-admin-card ${isActive ? 'mr-admin-card--active' : ''}`}
+                  onClick={() => handleOpenConversation(admin)}
+                >
+                  <span className="mr-admin-avatar"><FaUserShield /></span>
+                  <span className="mr-admin-main">
+                    <strong>{getFullName(admin)}</strong>
+                    <small>{getAccountType(admin)}</small>
+                  </span>
+                  <span className="mr-admin-action">Ouvrir</span>
+                </button>
+              );
+            })
+          ) : (
+            <div className="mr-chat-placeholder">Aucun administrateur trouvé.</div>
+          )}
+        </div>
+      </div>
+
+      <div className="mr-chat-panel">
+        {selectedAdminInfo && getFullName(selectedAdminInfo) !== 'Administrateur' ? (
+          <>
+            <div className="mr-chat-header">
+              <div className="mr-chat-header-main">
+                <span className="mr-chat-avatar"><FaUserShield /></span>
+                <div>
+                  <h2>{getFullName(selectedAdminInfo)}</h2>
+                  <p>{selectedAdminInfo.email || 'Email non renseigné'}</p>
+                </div>
+              </div>
+              <div className="mr-chat-header-meta">
+                <span>{selectedAdminInfo.telephone || selectedAdminInfo.phone || 'Téléphone non renseigné'}</span>
+                <strong>{selectedAdminInfo.statut_compte || selectedAdminInfo.status || 'Statut non renseigné'}</strong>
+              </div>
+            </div>
+
+            <div className="mr-message-list">
+              {loadingMessages ? (
+                <div className="mr-chat-loading">
+                  <span className="mr-spinner" />
+                  <p>Chargement des messages...</p>
+                </div>
+              ) : messages.length ? (
+                messages.map((message) => {
+                  const own = isOwnMessage(message, compteId);
+                  const status = getMessageStatus(message);
+                  const attachmentUrl = `${SERVER_URL}/api/enseignants/messagerie/messages/${getMessageId(message)}/piece-jointe/?current_compte_id=${encodeURIComponent(compteId)}`;
+                  return (
+                    <div key={getMessageId(message)} className={`mr-message-row ${own ? 'mr-message-row--own' : 'mr-message-row--received'}`}>
+                      <div className="mr-message-bubble">
+                        {getMessageText(message) && <p>{getMessageText(message)}</p>}
+                        {hasAttachment(message) && (
+                          <div className="mr-attachment">
+                            <FaFileAlt />
+                            <span>{getAttachmentName(message)}</span>
+                            <a href={attachmentUrl} target="_blank" rel="noopener noreferrer" title="Afficher">
+                              <FaEye />
+                            </a>
+                            <a href={attachmentUrl} download title="Télécharger">
+                              <FaDownload />
+                            </a>
+                          </div>
+                        )}
+                        <span className="mr-message-meta">
+                          {formatMessageTime(getMessageDate(message))}
+                          {own && (
+                            <>
+                              <StatusIcon status={status} />
+                              {status}
+                            </>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="mr-chat-empty">
+                  <FaComments />
+                  <p>Commencez la conversation avec l’administrateur sélectionné.</p>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <form className="mr-message-composer" onSubmit={handleComposerSubmit}>
+              {selectedFile && (
+                <div className="mr-file-preview">
+                  <FaFileAlt />
+                  <span>{selectedFile.name}</span>
+                  <small>{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</small>
+                  <button type="button" onClick={removeSelectedFile} title="Retirer le fichier">
+                    <FaTimes />
+                  </button>
+                </div>
+              )}
+              {fileError && <div className="mr-chat-error">{fileError}</div>}
+              <div className="mr-composer-row">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="mr-file-input"
+                  accept={ALLOWED_MESSAGE_EXTENSIONS.map((extension) => `.${extension}`).join(',')}
+                  onChange={handleFileChange}
+                />
+                <button
+                  type="button"
+                  className="mr-icon-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Joindre un fichier"
+                >
+                  <FaPaperclip />
+                </button>
+                <textarea
+                  value={messageText}
+                  onChange={(event) => setMessageText(event.target.value)}
+                  placeholder="Écrire un message..."
+                  rows={1}
+                />
+                <button
+                  type="button"
+                  className="mr-send-btn"
+                  onClick={handleSendMessage}
+                  disabled={sendingMessage || (!messageText.trim() && !selectedFile)}
+                  title="Envoyer"
+                >
+                  {sendingMessage ? <span className="mr-mini-loader mr-mini-loader--light" /> : <FaPaperPlane />}
+                </button>
+              </div>
+            </form>
+          </>
+        ) : (
+          <div className="mr-chat-welcome">
+            <FaComments />
+            <h2>Choisissez un administrateur</h2>
+            <p>Sélectionnez un administrateur à gauche pour démarrer ou reprendre une conversation.</p>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+};
+
 /* ─────────────────────────────────────────────────────────────
    Data display per type
 ───────────────────────────────────────────────────────────── */
@@ -158,7 +824,7 @@ const ProfesseurData = ({ d }) => (
     <Section title="Informations Administratives">
       {!isPrivateEtablissement(d.type_etablissement) && <DataRow label="Matricule ESU" value={d.matricule_esu} />}
       <DataRow label="Type d'établissement" value={d.type_etablissement === 'Public' ? 'Établissement Public' : d.type_etablissement === 'Privé' ? 'Établissement Privé' : d.type_etablissement} />
-      <DataRow label="Grade actuel" value={formatGradeActuel(d.grade_actuel)} />
+      <DataRow label="Qualité ou Grade Académique" value={formatGradeActuel(d.grade_actuel)} />
       <DataRow label="Établissement d'attache" value={d.universite_attache_precisee || d.universite_attache || d.etablissement_attache} />
       <DataRow label="Date d'engagement" value={d.date_engagement} />
       {d.grade_actuel !== 'DT' && <DataRow label="Référence dernier arrêté" value={d.reference_dernier_arrete} />}
@@ -169,13 +835,11 @@ const ProfesseurData = ({ d }) => (
 
     <Section title="Soutenance & Diplôme">
       <DataRow label="Type de diplôme de Doctorat" value={d.type_diplome} />
-      <DataRow label="Possède diplôme" value={d.possede_diplome} />
       <DataRow label="Numéro arrêté équivalence" value={d.numero_arrete_equivalence} />
       <DataRow label="Type de diplôme Master / D.E.A / D.E.S" value={d.type_diplome_dea_des} hideEmpty />
       <DataRow label="Université d'obtention de votre master/D.E.A/D.E.S" value={d.universite_master_dea_ds} />
       <DataRow label="Pays d'obtention de votre Master/D.E.A/D.E.S" value={d.pays_master_dea_ds} />
       <DataRow label="Date d'obtention de votre Master/D.E.A/D.E.S" value={d.date_obtention_master_dea_ds} />
-      <DataRow label="A étudié à l'étranger" value={d.a_etudie_etranger} hideEmpty />
       <DataRow label="Sujet de thèse" value={d.sujet_these} />
       {d.universite_obtention_diplome_doctorat && <DataRow label="Université d'obtention de votre Doctorat" value={d.universite_obtention_diplome_doctorat} />}
       {d.pays_obtention_diplome_doctorat && <DataRow label="Pays d'obtention de votre Doctorat" value={d.pays_obtention_diplome_doctorat} />}
@@ -189,7 +853,7 @@ const ProfesseurData = ({ d }) => (
     )}
 
     <Section title="Documents">
-      <FileRow label="Photo identité" path={d.photo_identite} />
+      <FileRow label="Photo Passeport" path={d.photo_identite} />
       {/* <DataRow label="Copie diplôme" value={<FileLink path={d.copie_diplome} />} /> */}
       {/* <DataRow label="Copie arrêté équivalence" value={<FileLink path={d.copie_arrete_equivalence} />} /> */}
       {isEmptyDisplayValue(d.copie_diplome) && <FileRow label="Documents équivalents" path={d.documents_equivalents} />}
@@ -333,7 +997,7 @@ const ChefTravauxData = ({ d }) => (
    Main component
 ───────────────────────────────────────────────────────────── */
 
-const MyRecord = ({ currentUser, onCreateRecord, onEditRecord, onLogout, onUserUpdated }) => {
+const MyRecord = ({ currentUser, onCreateRecord, onEditRecord, onLogout, onUserUpdated, openMessagingOnRecord = false, onMessagingOpened }) => {
   const [status, setStatus] = useState('loading'); // 'loading' | 'no_record' | 'has_record' | 'error'
   const [record, setRecord] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
@@ -344,6 +1008,8 @@ const MyRecord = ({ currentUser, onCreateRecord, onEditRecord, onLogout, onUserU
   const [selectedMigrationTarget, setSelectedMigrationTarget] = useState('');
   const [celebration, setCelebration] = useState(null);
   const [showProfileSidebar, setShowProfileSidebar] = useState(false);
+  const [showMessaging, setShowMessaging] = useState(false);
+  const [messagingUnreadCount, setMessagingUnreadCount] = useState(0);
 
   const accountType = currentUser?.type_de_compte || '';
   const compteId = currentUser?.id || currentUser?.compte_id;
@@ -427,6 +1093,26 @@ const MyRecord = ({ currentUser, onCreateRecord, onEditRecord, onLogout, onUserU
   const migrationTarget = selectedMigrationTarget;
   const migrationTargetLabel = migrationTarget === 'Professeur' ? 'Professeur' : 'Chef de Travaux';
   const confettiPieces = Array.from({ length: 34 }, (_, index) => index);
+  const canUseMessaging = MESSAGING_ALLOWED_TYPES.includes(resolvedType);
+
+  const refreshMessagingBadge = useCallback(async () => {
+    if (!canUseMessaging || !compteId) {
+      setMessagingUnreadCount(0);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${SERVER_URL}/api/enseignants/messagerie/conversations/?current_compte_id=${encodeURIComponent(compteId)}`, {
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!response.ok) return;
+      const data = await response.json().catch(() => ({}));
+      const nextConversations = asArray(data, ['conversations']);
+      setMessagingUnreadCount(nextConversations.reduce((total, conversation) => total + getUnreadConversationCount(conversation, compteId), 0));
+    } catch (error) {
+      console.warn('[Messaging] badge refresh failed:', error);
+    }
+  }, [canUseMessaging, compteId]);
 
   useEffect(() => {
     if (!celebration) return undefined;
@@ -437,6 +1123,20 @@ const MyRecord = ({ currentUser, onCreateRecord, onEditRecord, onLogout, onUserU
 
     return () => clearTimeout(timer);
   }, [celebration]);
+
+  useEffect(() => {
+    refreshMessagingBadge();
+    if (showMessaging) return undefined;
+
+    const timer = setInterval(refreshMessagingBadge, 12000);
+    return () => clearInterval(timer);
+  }, [refreshMessagingBadge, showMessaging]);
+
+  useEffect(() => {
+    if (!openMessagingOnRecord || !canUseMessaging) return;
+    setShowMessaging(true);
+    if (typeof onMessagingOpened === 'function') onMessagingOpened();
+  }, [canUseMessaging, onMessagingOpened, openMessagingOnRecord]);
 
   const handleMigration = async () => {
     if (!compteId || !migrationTarget || !migrationTargets.includes(migrationTarget)) return;
@@ -451,6 +1151,11 @@ const MyRecord = ({ currentUser, onCreateRecord, onEditRecord, onLogout, onUserU
     setMigrationError('');
 
     try {
+      const migratedMatricule = (record?.matricule || record?.matricule_esu || '').trim();
+      if (migratedMatricule) {
+        localStorage.setItem(MIGRATED_MATRICULE_KEY, migratedMatricule);
+      }
+
       const headers = {
         'Content-Type': 'application/json',
       };
@@ -490,6 +1195,7 @@ const MyRecord = ({ currentUser, onCreateRecord, onEditRecord, onLogout, onUserU
       setShowMigrationModal(false);
       setSelectedMigrationTarget('');
     } catch (error) {
+      localStorage.removeItem(MIGRATED_MATRICULE_KEY);
       setMigrationError(error.message || 'Impossible de migrer ce compte.');
     } finally {
       setMigrationLoading(false);
@@ -503,6 +1209,11 @@ const MyRecord = ({ currentUser, onCreateRecord, onEditRecord, onLogout, onUserU
       return;
     }
     if (!target || !migrationTargets.includes(target)) return;
+
+    const migratedMatricule = (record?.matricule || record?.matricule_esu || '').trim();
+    if (migratedMatricule) {
+      localStorage.setItem(MIGRATED_MATRICULE_KEY, migratedMatricule);
+    }
 
     setSelectedMigrationTarget(target);
     setMigrationMessage('');
@@ -549,6 +1260,22 @@ const MyRecord = ({ currentUser, onCreateRecord, onEditRecord, onLogout, onUserU
           >
             Guide
           </a>
+          {canUseMessaging && (
+            <button
+              type="button"
+              className={`mr-message-nav-btn ${showMessaging ? 'mr-message-nav-btn--active' : ''}`}
+              onClick={() => setShowMessaging(true)}
+              title="Ouvrir la messagerie"
+            >
+              <FaComments />
+              Messagerie
+              {messagingUnreadCount > 0 && (
+                <span className="mr-message-badge" aria-label={`${messagingUnreadCount} nouveau message`}>
+                  {messagingUnreadCount > 99 ? '99+' : messagingUnreadCount}
+                </span>
+              )}
+            </button>
+          )}
           <button type="button" className="mr-logout-btn" onClick={onLogout} title="Se déconnecter">
             <FaSignOutAlt /> Déconnexion
           </button>
@@ -557,6 +1284,18 @@ const MyRecord = ({ currentUser, onCreateRecord, onEditRecord, onLogout, onUserU
 
       {/* ── Content ── */}
       <main className="mr-main">
+        {showMessaging ? (
+          <MessagingPanel
+            compteId={compteId}
+            resolvedType={resolvedType}
+            onBack={() => {
+              setShowMessaging(false);
+              refreshMessagingBadge();
+            }}
+            onUnreadChange={setMessagingUnreadCount}
+          />
+        ) : (
+          <>
 
         {/* Loading */}
         {status === 'loading' && (
@@ -617,6 +1356,24 @@ const MyRecord = ({ currentUser, onCreateRecord, onEditRecord, onLogout, onUserU
                 )}
               </div>
               <div className="mr-record-topbar-actions">
+                {canUseMessaging && (
+                  <button
+                    type="button"
+                    className="mr-btn mr-btn-message"
+                    onClick={() => setShowMessaging(true)}
+                    title="Ouvrir la messagerie"
+                  >
+                    <span className="mr-btn-message-icon">
+                      <FaComments />
+                      {messagingUnreadCount > 0 && (
+                        <span className="mr-message-badge mr-message-badge--inline" aria-label={`${messagingUnreadCount} nouveau message`}>
+                          {messagingUnreadCount > 99 ? '99+' : messagingUnreadCount}
+                        </span>
+                      )}
+                    </span>
+                    Messagerie
+                  </button>
+                )}
                 {migrationTargets.map((target) => (
                   <button
                     key={target}
@@ -660,6 +1417,17 @@ const MyRecord = ({ currentUser, onCreateRecord, onEditRecord, onLogout, onUserU
               </p>
             )}
           </div>
+        )}
+
+        {status !== 'loading' && !canUseMessaging && (
+          <MessagingPanel
+            compteId={compteId}
+            resolvedType={resolvedType}
+            onBack={() => setShowMessaging(false)}
+            onUnreadChange={setMessagingUnreadCount}
+          />
+        )}
+          </>
         )}
       </main>
 
