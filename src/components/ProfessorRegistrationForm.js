@@ -8892,10 +8892,13 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
     try {
       const submitData = new FormData();
 
+      const getEtablissementAttacheApiField = () => (
+        formData.typecompte === 'Professeur' ? 'universite_attache' : 'etablissement_attache'
+      );
+
       // Mapping des noms de champs formulaire → noms API pour CT
       const CT_FIELD_MAP = {
         date_soutenance:            'date_engagement',
-        universite_attache:         'etablissement_attache',
         arrete_nomination_ct:       'arrete_nomination',
         decision_inscription_ass_ct:'decision_inscription',
         commentaire_confirmation:   'commentaires',
@@ -8911,8 +8914,15 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
           value = formData.universite_attache_precisee;
         }
 
+        const isEtablissementAttacheField = (
+          key === 'universite_attache' ||
+          (key === 'universite_attache_precisee' && formData.universite_attache === 'AUTRES')
+        );
+
         // Pour CT, remapper les noms de champs formulaire vers les noms API
-        const apiKey = formData.typecompte === 'CT' && CT_FIELD_MAP[key] ? CT_FIELD_MAP[key] : key;
+        const apiKey = isEtablissementAttacheField
+          ? getEtablissementAttacheApiField()
+          : (formData.typecompte === 'CT' && CT_FIELD_MAP[key] ? CT_FIELD_MAP[key] : key);
         if (formData.type_etablissement === 'Privé' && ['salaire_base', 'matricule', 'prime_institutionnelle'].includes(apiKey)) {
           return;
         }
