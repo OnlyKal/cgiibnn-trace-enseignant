@@ -3065,7 +3065,7 @@ const UNIVERSITIES = [
   {
     "code": "ISAM-IDIOFA",
     "name": "INSTITUT SUPERIEUR D'ARTS ET METIERS D'IDIOFA",
-    "type_etablissment": "Privé"
+    "type_etablissment": "Public"
   },
   {
     "code": "ISP-MPO",

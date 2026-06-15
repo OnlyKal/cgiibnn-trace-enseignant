@@ -1,15 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import './styles/AccountTypeSelection.css';
-import { FaChalkboardUser, FaToolbox, FaGraduationCap } from 'react-icons/fa6';
 import SplashScreen from './components/SplashScreen';
 import LoginForm from './components/LoginForm';
 import SignupForm from './components/SignupForm';
-import EmailVerificationScreen from './components/EmailVerificationScreen';
 import CommitmentScreen, { isCommitmentAccepted, clearCommitmentAccepted } from './components/CommitmentScreen';
 import ProfessorRegistrationForm from './components/ProfessorRegistrationForm';
 import MyRecord from './components/MyRecord';
 import AuthService from './services/AuthService';
+
+const activateUserAccount = (user) => {
+  if (!user) return user;
+  return {
+    ...user,
+    statut_compte: 'actif',
+  };
+};
 
 /**
  * Application principale - Plateforme web React d'identification et de gestion des enseignants (Professeurs, Chefs des travaux, Assistants)
@@ -23,17 +29,12 @@ import AuthService from './services/AuthService';
  * - Gestion automatique de l'expiration du token
  */
 function App() {
-  const [showSplash, setShowSplash] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedAccountType, setSelectedAccountType] = useState('');
   const [isSessionRestored, setIsSessionRestored] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
-
-  // États pour la vérification d'email
-  const [showEmailVerification, setShowEmailVerification] = useState(false);
-  const [emailVerificationUser, setEmailVerificationUser] = useState(null);
 
   const [showCommitment, setShowCommitment] = useState(false);
 
@@ -57,16 +58,10 @@ function App() {
       if (rawToken) {
         if (rawUser) {
           try {
-            const parsedUser = JSON.parse(rawUser);
-            // Vérifier si le compte nécessite une vérification d'email
-            if (parsedUser.statut_compte === 'inactif') {
-              setEmailVerificationUser(parsedUser);
-              setShowEmailVerification(true);
-              setIsLoggedIn(false);
-            } else {
-              setCurrentUser(parsedUser);
-              setIsLoggedIn(true);
-            }
+            const parsedUser = activateUserAccount(JSON.parse(rawUser));
+            AuthService.saveSession(parsedUser);
+            setCurrentUser(parsedUser);
+            setIsLoggedIn(true);
           } catch (e) {
             setCurrentUser(null);
             setIsLoggedIn(false);
@@ -78,16 +73,10 @@ function App() {
       } else {
         // Pas de token en localStorage — fallback sur AuthService
         if (AuthService.isAuthenticated()) {
-          const user = AuthService.getUser();
-          // Vérifier le statut du compte
-          if (user.statut_compte === 'inactif') {
-            setEmailVerificationUser(user);
-            setShowEmailVerification(true);
-            setIsLoggedIn(false);
-          } else {
-            setCurrentUser(user);
-            setIsLoggedIn(true);
-          }
+          const user = activateUserAccount(AuthService.getUser());
+          AuthService.saveSession(user);
+          setCurrentUser(user);
+          setIsLoggedIn(true);
         } else {
           AuthService.logout();
         }
@@ -179,9 +168,7 @@ function App() {
     // Réinitialiser l'état de l'application
     setIsLoggedIn(false);
     setShowSignup(false);
-    setShowEmailVerification(false);
     setCurrentUser(null);
-    setEmailVerificationUser(null);
     setSelectedAccountType('');
     setAppView('record');
     setFormMode('create');
@@ -202,59 +189,31 @@ function App() {
     <div className="App">
       {isInitializing ? (
         <SplashScreen onFinish={() => {}} />
-      ) : !isLoggedIn && !showEmailVerification ? (
+      ) : !isLoggedIn ? (
         showSignup ? (
           <SignupForm 
-            onSignupSuccess={(userData, options = {}) => {
-              if (options.requiresEmailVerification) {
-                // L'utilisateur doit vérifier son email
-                setEmailVerificationUser(userData);
-                setShowEmailVerification(true);
-                setShowSignup(false);
-                // Ne pas connecter l'utilisateur encore
-                setIsLoggedIn(false);
-              } else {
-                // Le compte est déjà actif
-                setCurrentUser(userData);
-                setShowSignup(false);
-                setIsLoggedIn(true);
-                if (!isCommitmentAccepted()) setShowCommitment(true);
-              }
+            onSignupSuccess={(userData) => {
+              const activeUser = activateUserAccount(userData);
+              AuthService.saveSession(activeUser);
+              setCurrentUser(activeUser);
+              setShowSignup(false);
+              setIsLoggedIn(true);
+              if (!isCommitmentAccepted()) setShowCommitment(true);
             }}
             onBackToLogin={() => setShowSignup(false)}
           />
         ) : (
           <LoginForm 
             onLoginSuccess={(userData) => {
-              // Vérifier le statut du compte à la connexion aussi
-              if (userData.statut_compte === 'inactif') {
-                setEmailVerificationUser(userData);
-                setShowEmailVerification(true);
-                // Ne pas connecter l'utilisateur
-                setIsLoggedIn(false);
-              } else {
-                setCurrentUser(userData);
-                setIsLoggedIn(true);
-                if (!isCommitmentAccepted()) setShowCommitment(true);
-              }
+              const activeUser = activateUserAccount(userData);
+              AuthService.saveSession(activeUser);
+              setCurrentUser(activeUser);
+              setIsLoggedIn(true);
+              if (!isCommitmentAccepted()) setShowCommitment(true);
             }}
             onSignupClick={() => setShowSignup(true)}
           />
         )
-      ) : showEmailVerification && emailVerificationUser ? (
-        <EmailVerificationScreen
-          userEmail={emailVerificationUser.email}
-          userName={`${emailVerificationUser.postnom} ${emailVerificationUser.nom}`}
-          onVerificationComplete={(updatedUser) => {
-            // À utiliser quand l'API notifiera que l'email est vérifié
-            setCurrentUser(updatedUser);
-            setShowEmailVerification(false);
-            setEmailVerificationUser(null);
-            setIsLoggedIn(true);
-            if (!isCommitmentAccepted()) setShowCommitment(true);
-          }}
-          onLogout={handleLogout}
-        />
       ) : showCommitment ? (
         <CommitmentScreen onContinue={() => setShowCommitment(false)} />
       ) : (

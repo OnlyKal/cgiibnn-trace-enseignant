@@ -3,8 +3,12 @@ import { SERVER_URL } from '../config';
 import '../styles/LoginForm.css';
 import { FaEnvelope, FaLock, FaEye, FaEyeSlash, FaUserShield } from 'react-icons/fa';
 import LoadingModal from './LoadingModal';
-import ApiService from '../services/ApiService';
 import AuthService from '../services/AuthService';
+
+const activateUserAccount = (user) => ({
+  ...user,
+  statut_compte: 'actif',
+});
 
 const LoginForm = ({ onLoginSuccess, onSignupClick }) => {
   const [formData, setFormData] = useState({
@@ -112,7 +116,7 @@ const LoginForm = ({ onLoginSuccess, onSignupClick }) => {
 
 
       // Nouvelle structure : { message, compte: { ... }, tokens: { access, refresh } }
-      const userData = data.compte;
+      const userData = data.compte ? activateUserAccount(data.compte) : null;
 
       if (!userData) {
         console.error('Objet compte absent de la reponse');

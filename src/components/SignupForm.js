@@ -3,8 +3,12 @@ import { SERVER_URL } from '../config';
 import '../styles/SignupForm.css';
 import { FaUser, FaEnvelope, FaPhone, FaLock, FaEye, FaEyeSlash, FaArrowLeft } from 'react-icons/fa';
 import LoadingModal from './LoadingModal';
-import ApiService from '../services/ApiService';
 import AuthService from '../services/AuthService';
+
+const activateUserAccount = (user) => ({
+  ...user,
+  statut_compte: 'actif',
+});
 
 const SignupForm = ({ onSignupSuccess, onBackToLogin }) => {
   const [formData, setFormData] = useState({
@@ -136,7 +140,7 @@ const SignupForm = ({ onSignupSuccess, onBackToLogin }) => {
       const data = await response.json();
 
       // Nouvelle structure : { message, compte: { ... }, tokens: { access, refresh } }
-      const userData = data.compte;
+      const userData = data.compte ? activateUserAccount(data.compte) : null;
 
       if (!userData) {
         throw new Error('Données utilisateur non reçues du serveur');
@@ -152,18 +156,9 @@ const SignupForm = ({ onSignupSuccess, onBackToLogin }) => {
       showPopup('Compte créé avec succès !', 'success');
       setMessage('');
 
-      // Vérifier si le compte nécessite une vérification d'email
-      if (userData.statut_compte === 'inactif') {
-        // Compte créé mais inactive - redirection vers vérification email
-        setTimeout(() => {
-          onSignupSuccess(userData, { requiresEmailVerification: true });
-        }, 1000);
-      } else {
-        // Compte actif - continue normalement
-        setTimeout(() => {
-          onSignupSuccess(userData, { requiresEmailVerification: false });
-        }, 1000);
-      }
+      setTimeout(() => {
+        onSignupSuccess(userData);
+      }, 1000);
     } catch (error) {
       let errorMsg = 'Erreur lors de la création du compte';
       if (error.name === 'AbortError') {
