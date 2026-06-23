@@ -8,6 +8,7 @@ import {
 import { SERVER_URL } from '../config';
 import ProfileSidebar from './ProfileSidebar';
 import UserInfo from './UserInfo';
+import { getTimeoutSignal } from '../utils/timeoutSignal';
 import '../styles/MyRecord.css';
 
 /* ─────────────────────────────────────────────────────────────
@@ -330,7 +331,7 @@ const MessagingPanel = ({ compteId, resolvedType, onBack, onUnreadChange }) => {
 
   const requestJson = useCallback(async (endpoint, options = {}) => {
     const response = await fetch(`${SERVER_URL}${endpoint}`, {
-      signal: AbortSignal.timeout(options.timeout || 30000),
+      signal: getTimeoutSignal(options.timeout || 30000),
       ...options,
     });
     const payload = await response.json().catch(() => ({}));
@@ -1103,7 +1104,7 @@ const MyRecord = ({ currentUser, onCreateRecord, onEditRecord, onLogout, onUserU
 
     try {
       const response = await fetch(`${SERVER_URL}/api/enseignants/messagerie/conversations/?current_compte_id=${encodeURIComponent(compteId)}`, {
-        signal: AbortSignal.timeout(15000),
+        signal: getTimeoutSignal(15000),
       });
       if (!response.ok) return;
       const data = await response.json().catch(() => ({}));

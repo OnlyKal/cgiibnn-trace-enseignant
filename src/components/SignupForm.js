@@ -4,6 +4,7 @@ import '../styles/SignupForm.css';
 import { FaUser, FaEnvelope, FaPhone, FaLock, FaEye, FaEyeSlash, FaArrowLeft } from 'react-icons/fa';
 import LoadingModal from './LoadingModal';
 import AuthService from '../services/AuthService';
+import { getTimeoutSignal } from '../utils/timeoutSignal';
 
 const activateUserAccount = (user) => ({
   ...user,
@@ -120,7 +121,7 @@ const SignupForm = ({ onSignupSuccess, onBackToLogin }) => {
           type_de_compte: formData.type_de_compte,
           mot_de_passe: formData.mot_de_passe,
         }),
-        signal: AbortSignal.timeout(30000),
+        signal: getTimeoutSignal(30000),
       });
 
       if (!response.ok) {

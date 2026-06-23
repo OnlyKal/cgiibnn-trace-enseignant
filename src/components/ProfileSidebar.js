@@ -5,6 +5,7 @@ import {
 } from 'react-icons/fa';
 import { SERVER_URL } from '../config';
 import AuthService from '../services/AuthService';
+import { getTimeoutSignal } from '../utils/timeoutSignal';
 import '../styles/ProfileSidebar.css';
 
 const TYPE_LABELS = {
@@ -70,7 +71,7 @@ const ProfileSidebar = ({ isOpen, onClose, user, onViewMyRecord, onLogout }) => 
           ancien_mot_de_passe: pwForm.ancien,
           nouveau_mot_de_passe: pwForm.nouveau,
         }),
-        signal: AbortSignal.timeout(15000),
+        signal: getTimeoutSignal(15000),
       });
 
       if (res.ok) {

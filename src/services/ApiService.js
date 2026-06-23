@@ -1,5 +1,6 @@
 import { SERVER_URL } from '../config';
 import AuthService from './AuthService';
+import { getTimeoutSignal } from '../utils/timeoutSignal';
 
 /**
  * Service d'API pour gérer les requêtes authentifiées
@@ -54,7 +55,7 @@ class ApiService {
     const response = await fetch(`${SERVER_URL}${endpoint}`, {
       method: 'GET',
       headers: this.getAuthHeaders(),
-      signal: AbortSignal.timeout(options.timeout || 30000),
+      signal: getTimeoutSignal(options.timeout || 30000),
       ...options,
     });
 
@@ -75,7 +76,7 @@ class ApiService {
       method: 'POST',
       headers: this.getAuthHeaders(),
       body: JSON.stringify(data),
-      signal: AbortSignal.timeout(options.timeout || 30000),
+      signal: getTimeoutSignal(options.timeout || 30000),
       ...options,
     });
 
@@ -96,7 +97,7 @@ class ApiService {
       method: 'PATCH',
       headers: this.getAuthHeaders(),
       body: JSON.stringify(data),
-      signal: AbortSignal.timeout(options.timeout || 30000),
+      signal: getTimeoutSignal(options.timeout || 30000),
       ...options,
     });
 
@@ -116,7 +117,7 @@ class ApiService {
     const response = await fetch(`${SERVER_URL}${endpoint}`, {
       method: 'DELETE',
       headers: this.getAuthHeaders(),
-      signal: AbortSignal.timeout(options.timeout || 30000),
+      signal: getTimeoutSignal(options.timeout || 30000),
       ...options,
     });
 
@@ -134,7 +135,7 @@ class ApiService {
     const response = await fetch(`${SERVER_URL}${endpoint}`, {
       method: 'POST',
       body: formData,
-      signal: AbortSignal.timeout(options.timeout || 240000),
+      signal: getTimeoutSignal(options.timeout || 240000),
     });
 
     if (!response.ok) {
@@ -278,7 +279,7 @@ class ApiService {
         Accept: 'application/json',
       },
       body: formData,
-      signal: AbortSignal.timeout(240000),
+      signal: getTimeoutSignal(240000),
     });
 
     if (!response.ok) {
@@ -323,7 +324,7 @@ class ApiService {
     const response = await fetch(`${SERVER_URL}/api/enseignants/assistant/edit/${id}/`, {
       method: 'PATCH',
       body: formData,
-      signal: AbortSignal.timeout(240000),
+      signal: getTimeoutSignal(240000),
     });
 
     if (!response.ok) {
@@ -369,7 +370,7 @@ class ApiService {
     const response = await fetch(`${SERVER_URL}/api/enseignants/chef-travaux/edit/${id}/`, {
       method: 'PATCH',
       body: formData,
-      signal: AbortSignal.timeout(240000),
+      signal: getTimeoutSignal(240000),
     });
 
     if (!response.ok) {
@@ -391,7 +392,7 @@ class ApiService {
       headers: {
         'Content-Type': 'application/json',
       },
-      signal: AbortSignal.timeout(options.timeout || 30000),
+      signal: getTimeoutSignal(options.timeout || 30000),
       ...options,
     });
 

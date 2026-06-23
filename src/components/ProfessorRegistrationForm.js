@@ -6,6 +6,7 @@ import { FaUser, FaGraduationCap, FaFileAlt, FaCheckCircle, FaEye, FaSignOutAlt,
 import LoadingModal from './LoadingModal';
 import UserInfo from './UserInfo';
 import ProfileSidebar from './ProfileSidebar';
+import { getTimeoutSignal } from '../utils/timeoutSignal';
 import Select from 'react-select';
 import { COUNTRIES } from '../data/countries';
 
@@ -145,6 +146,11 @@ const UNIVERSITIES = [
   {
     "code": "IFAF-MWEKA",
     "name": "INSTITUT FACULTAIRE - MWEKA",
+    "type_etablissment": "Public"
+  },
+  {
+    "code": "UOMWEKA",
+    "name": "UNIERSITE OFFICIELLE DE MWEKA",
     "type_etablissment": "Public"
   },
   {
@@ -1343,6 +1349,11 @@ const UNIVERSITIES = [
     "type_etablissment": "Public"
   },
   {
+    "code": "ISP-BUSSA/NDOLO-LIBOKO",
+    "name": "NSTITUT SUPÉRIEUR PÉDAGOGIQUE BUSSA/NDOLO-LIBOKO",
+    "type_etablissment": "Public"
+  },
+  {
     "code": "ISTA-BUKAVU",
     "name": "INSTITUT SUPERIEUR DES TECHNIQUES APPLIQUEES DE BUKAVU",
     "type_etablissment": "Public"
@@ -1441,6 +1452,11 @@ const UNIVERSITIES = [
     "code": "ISTM-BENI",
     "name": "INSTITUT SUPERIEUR DES TECHNIQUES MEDICALES DE BENI",
     "type_etablissment": "Public"
+  },
+  {
+    "code": "ISTPG-MOANDA",
+    "name": "INSTITUT SUPERIEUR DES TECHNIQUES DU PETROLE ET DU GAZ DE MOANDA",
+    "type_etablissment": "Privé"
   },
   {
     "code": "ISTM-BULUNGU",
@@ -2477,6 +2493,11 @@ const UNIVERSITIES = [
     "name": "INSTITUT SUPERIEUR D'ETUDES AGRONOMIQUES, VETERINAIRES ET FORESTIERES DE KIRUMBA",
     "type_etablissment": "Public"
   },
+   {
+    "code": "ISP-KIRUMBA",
+    "name": "INSTITUT SUPERIEUR PEDAGOGIQUE DE KIRUMBA",
+    "type_etablissment": "Public"
+  },
   {
     "code": "ISEAVF-NYIRAGONGO",
     "name": "INSTITUT SUPERIEUR D'ETUDES AGRONOMIQUES, VETERINAIRES ET FORESTIERES DE NYIRAGONGO",
@@ -2488,7 +2509,7 @@ const UNIVERSITIES = [
     "type_etablissment": "Public"
   },
   {
-    "code": "ISNPÃª-MOANDA",
+    "code": "ISNPE-MOANDA",
     "name": "INSTITUT SUPERIEUR DE NAVIGATION ET DE PECHE DE MOANDA",
     "type_etablissment": "Public"
   },
@@ -3078,7 +3099,7 @@ const UNIVERSITIES = [
     "type_etablissment": "Privé"
   },
   {
-    "code": "UNIBAK Ã  BAgala",
+    "code": "UNIBAK",
     "name": "UNIVERSITE BAPTISTE DE KIKONGO",
     "type_etablissment": "Privé"
   },
@@ -4298,13 +4319,13 @@ const UNIVERSITIES = [
     "type_etablissment": "Privé"
   },
   {
-    "code": "UAC DE BENI",
-    "name": "UNIVERSITE DE L'AVENIR DU CONGO DE BENI",
+    "code": "UAC-BENI",
+    "name": "UNIVERSITÉ DE L'ASSOMPTION DU CONGO DE BENI",
     "type_etablissment": "Privé"
   },
   {
     "code": "PUK-E",
-    "name": "UNIVERSITE PROGRÃˆS DE KINSHASA-EST",
+    "name": "UNIVERSITE PROGRES DE KINSHASA-EST",
     "type_etablissment": "Privé"
   },
   {
@@ -7888,7 +7909,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
 
     try {
       const response = await fetch(`${SERVER_URL}/api/enseignants/messagerie/conversations/?current_compte_id=${encodeURIComponent(compteId)}`, {
-        signal: AbortSignal.timeout(15000),
+        signal: getTimeoutSignal(15000),
       });
       if (!response.ok) return;
       const data = await response.json().catch(() => ({}));
@@ -8463,7 +8484,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
       }
 
       const response = await fetch(`${SERVER_URL}${endpoint}`, {
-        signal: AbortSignal.timeout(240000), // 4 minutes
+        signal: getTimeoutSignal(240000), // 4 minutes
       });
 
       if (!response.ok) {
@@ -8505,7 +8526,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
         try {
           const response = await fetch(url, {
             ...options,
-            signal: AbortSignal.timeout(240000), // 4 minutes
+            signal: getTimeoutSignal(240000), // 4 minutes
           });
           return response;
         } catch (error) {
@@ -8879,7 +8900,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
         try {
           const response = await fetch(url, {
             ...options,
-            signal: AbortSignal.timeout(240000), // 4 minutes timeout pour PATCH
+            signal: getTimeoutSignal(240000), // 4 minutes timeout pour PATCH
           });
           return response;
         } catch (error) {
@@ -8895,6 +8916,12 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
       const getEtablissementAttacheApiField = () => (
         formData.typecompte === 'Professeur' ? 'universite_attache' : 'etablissement_attache'
       );
+
+      // Mapping des noms de champs formulaire → noms API pour Assistant
+      const ASSISTANT_FIELD_MAP = {
+        decision_nomination_assistant: 'decision_nomination',
+        decision_inscription_ass_ct:   'decision_inscription',
+      };
 
       // Mapping des noms de champs formulaire → noms API pour CT
       const CT_FIELD_MAP = {
@@ -8922,7 +8949,11 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
         // Pour CT, remapper les noms de champs formulaire vers les noms API
         const apiKey = isEtablissementAttacheField
           ? getEtablissementAttacheApiField()
-          : (formData.typecompte === 'CT' && CT_FIELD_MAP[key] ? CT_FIELD_MAP[key] : key);
+          : (
+            formData.typecompte === 'Assistant' && ASSISTANT_FIELD_MAP[key]
+              ? ASSISTANT_FIELD_MAP[key]
+              : formData.typecompte === 'CT' && CT_FIELD_MAP[key] ? CT_FIELD_MAP[key] : key
+          );
         if (formData.type_etablissement === 'Privé' && ['salaire_base', 'matricule', 'prime_institutionnelle'].includes(apiKey)) {
           return;
         }
@@ -9184,7 +9215,7 @@ const ProfessorRegistrationForm = ({ onLogout, currentUser, preselectedType, onR
         try {
           const response = await fetch(url, {
             ...options,
-            signal: AbortSignal.timeout(240000), // 4 minutes timeout
+            signal: getTimeoutSignal(240000), // 4 minutes timeout
           });
           return response;
         } catch (error) {

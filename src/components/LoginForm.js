@@ -4,6 +4,7 @@ import '../styles/LoginForm.css';
 import { FaEnvelope, FaLock, FaEye, FaEyeSlash, FaUserShield } from 'react-icons/fa';
 import LoadingModal from './LoadingModal';
 import AuthService from '../services/AuthService';
+import { getTimeoutSignal } from '../utils/timeoutSignal';
 
 const activateUserAccount = (user) => ({
   ...user,
@@ -103,7 +104,7 @@ const LoginForm = ({ onLoginSuccess, onSignupClick }) => {
           email,
           mot_de_passe: motDePasse,
         }),
-        signal: AbortSignal.timeout(30000), // 30 seconds timeout
+        signal: getTimeoutSignal(30000), // 30 seconds timeout
       }).then(async res => {
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
